@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AR Sender</title>
+  <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --border: #2a2a3a;
+      --accent: #5b8cff;
+      --accent2: #a78bfa;
+      --text: #e8e8f0;
+      --muted: #7070a0;
+      --green: #34d399;
+      --red: #f87171;
+      --yellow: #fbbf24;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px;
+    }
+
+    .logo {
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      color: var(--muted);
+      margin-bottom: 32px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 36px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 560px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 16px;
+      padding: 12px 16px;
+      outline: none;
+      transition: border-color 0.2s;
+      letter-spacing: 0.06em;
+    }
+
+    input[type="text"]::placeholder { color: var(--muted); }
+    input[type="text"]:focus { border-color: var(--accent); }
+
+    button {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 12px 22px;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+      white-space: nowrap;
+    }
+
+    button:hover:not(:disabled) { opacity: 0.85; }
+    button:active:not(:disabled) { transform: scale(0.97); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .status-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: var(--bg);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .dot.ready { background: var(--yellow); }
+    .dot.live { background: var(--green); animation: pulse 1.5s infinite; }
+    .dot.error { background: var(--red); }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    #statusText {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    video {
+      width: 100%;
+      border-radius: 10px;
+      background: #000;
+      aspect-ratio: 16/9;
+      display: block;
+      margin-top: 16px;
+    }
+
+    .connections-list {
+      margin-top: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .conn-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 13px;
+    }
+
+    .conn-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 1.5s infinite;
+    }
+
+    .conn-label { color: var(--muted); margin-right: 4px; }
+
+    .info-box {
+      background: rgba(91,140,255,0.08);
+      border: 1px solid rgba(91,140,255,0.25);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-top: 14px;
+    }
+
+    .info-box strong { color: var(--accent); }
+
+    .log-box {
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 14px;
+      max-height: 120px;
+      overflow-y: auto;
+      line-height: 1.6;
+      font-family: monospace;
+    }
+
+    details summary {
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 14px;
+      user-select: none;
+    }
+
+    .peer-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px; height: 22px;
+      background: var(--accent);
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="logo">AR Connect — Sender</div>
+<h1>映像を配信する</h1>
+<p class="subtitle">PCのカメラ映像をスマホへリアルタイム配信</p>
+
+<!-- Step 1: Room code -->
+<div class="card">
+  <div class="card-title">STEP 1 — 合言葉を設定</div>
+  <div class="input-row">
+    <input type="text" id="roomInput" placeholder="合言葉を入力（例: summer2025）" maxlength="32">
+    <button id="startBtn">配信開始</button>
+  </div>
+
+  <div class="card-title" style="margin-top:18px">使用カメラ</div>
+  <select id="cameraSelect" style="
+    width:100%; background:var(--bg); border:1px solid var(--border);
+    border-radius:8px; color:var(--text); font-family:inherit;
+    font-size:14px; padding:12px 14px; outline:none; cursor:pointer;
+  ">
+    <option value="">読み込み中...</option>
+  </select>
+
+  <div class="info-box" style="margin-top:14px">
+    スマホ側で同じ <strong>合言葉</strong> を入力すると接続します。<br>
+    英数字・記号が使えます（大文字小文字は区別されます）。
+  </div>
+</div>
+
+<!-- Step 2: Camera -->
+<div class="card" id="cameraCard" style="display:none">
+  <div class="card-title">STEP 2 — カメラプレビュー</div>
+  <div class="status-row">
+    <div class="dot" id="dot"></div>
+    <span id="statusText">スマホからの接続を待っています...</span>
+  </div>
+  <video id="localVideo" autoplay muted playsinline></video>
+
+  <div class="connections-list" id="connectionsList"></div>
+
+  <details>
+    <summary>接続ログ</summary>
+    <div class="log-box" id="logBox"></div>
+  </details>
+</div>
+
+<script>
+const ROOM_PREFIX = "arconnect-room-";
+
+let peer = null;
+let localStream = null;
+const activeCalls = new Map();
+
+const roomInput      = document.getElementById("roomInput");
+const startBtn       = document.getElementById("startBtn");
+const cameraSelect   = document.getElementById("cameraSelect");
+
+/* カメラ一覧を取得してドロップダウンに表示 */
+async function enumCameras() {
+  try {
+    // ラベル取得のため一度権限を取ってすぐ止める
+    const tmp = await navigator.mediaDevices.getUserMedia({ video: true });
+    tmp.getTracks().forEach(t => t.stop());
+  } catch(e) {}
+
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const cameras = devices.filter(d => d.kind === "videoinput");
+
+  cameraSelect.innerHTML = "";
+  cameras.forEach((cam, i) => {
+    const opt = document.createElement("option");
+    opt.value = cam.deviceId;
+    opt.textContent = cam.label || `カメラ ${i + 1}`;
+    // UGreen / USB を含むラベルは自動選択
+    if (/ugreen|usb/i.test(cam.label)) opt.selected = true;
+    cameraSelect.appendChild(opt);
+  });
+
+  if (cameras.length === 0) {
+    cameraSelect.innerHTML = "<option value=''>カメラが見つかりません</option>";
+  }
+}
+
+enumCameras();
+const cameraCard = document.getElementById("cameraCard");
+const localVideo = document.getElementById("localVideo");
+const dot = document.getElementById("dot");
+const statusText = document.getElementById("statusText");
+const connectionsList = document.getElementById("connectionsList");
+const logBox = document.getElementById("logBox");
+
+function log(msg) {
+  const t = new Date().toLocaleTimeString("ja-JP", { hour12: false });
+  logBox.innerHTML += `<span style="color:var(--muted)">${t}</span> ${msg}<br>`;
+  logBox.scrollTop = logBox.scrollHeight;
+  console.log(msg);
+}
+
+function setStatus(msg, state) {
+  statusText.textContent = msg;
+  dot.className = "dot" + (state ? " " + state : "");
+}
+
+function updateConnectionUI() {
+  connectionsList.innerHTML = "";
+  activeCalls.forEach((callObj, peerId) => {
+    const div = document.createElement("div");
+    div.className = "conn-item";
+    div.innerHTML = `<div class="conn-dot"></div><span class="conn-label">接続中:</span>${peerId.replace(ROOM_PREFIX, "")}`;
+    connectionsList.appendChild(div);
+  });
+  if (activeCalls.size > 0) {
+    setStatus(`LIVE — ${activeCalls.size}台のスマホと接続中`, "live");
+  } else {
+    setStatus("スマホからの接続を待っています...", "ready");
+  }
+}
+
+startBtn.addEventListener("click", async () => {
+  const room = roomInput.value.trim();
+  if (!room) { roomInput.focus(); return; }
+
+  startBtn.disabled = true;
+  roomInput.disabled = true;
+
+  // Get camera + mic（選択したカメラを使用）
+  const deviceId = cameraSelect.value;
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
+        width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 }
+      },
+      audio: { echoCancellation: true, noiseSuppression: true }
+    });
+    localVideo.srcObject = localStream;
+    log("カメラ取得OK: " + (cameraSelect.options[cameraSelect.selectedIndex]?.text || deviceId));
+  } catch (e) {
+    log("カメラエラー: " + e.message);
+    startBtn.disabled = false;
+    roomInput.disabled = false;
+    return;
+  }
+
+  cameraCard.style.display = "block";
+  setStatus("PeerJS接続中...", "");
+
+  const peerId = ROOM_PREFIX + room + "-sender";
+
+  peer = new Peer(peerId, {
+    debug: 1,
+    config: {
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+        { urls: "stun:stun2.l.google.com:19302" },
+        { urls: "stun:stun.cloudflare.com:3478" }
+      ]
+    }
+  });
+
+  peer.on("open", id => {
+    log("Sender ID: " + id);
+    setStatus("スマホからの接続を待っています...", "ready");
+  });
+
+  peer.on("call", call => {
+    log("受信: " + call.peer);
+    call.answer(localStream);
+    activeCalls.set(call.peer, call);
+    updateConnectionUI();
+
+    call.on("close", () => {
+      log("切断: " + call.peer);
+      activeCalls.delete(call.peer);
+      updateConnectionUI();
+    });
+
+    call.on("error", e => {
+      log("Callエラー: " + e);
+      activeCalls.delete(call.peer);
+      updateConnectionUI();
+    });
+  });
+
+  peer.on("error", e => {
+    log("PeerJSエラー: " + e.type);
+    if (e.type === "unavailable-id") {
+      setStatus("この合言葉はすでに使用中です", "error");
+    } else {
+      setStatus("エラー: " + e.type, "error");
+    }
+    startBtn.disabled = false;
+    roomInput.disabled = false;
+  });
+});
+</script>
+</body>
+</html>
