@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AR Connect">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#000000">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <title>AR Viewer</title>
+
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.7/aframe/build/aframe-ar.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0a0a0f;
+      color: #e8e8f0;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      overscroll-behavior: none;
+    }
+
+    /* ======= SETUP SCREEN ======= */
+    #setupScreen {
+      position: fixed;
+      inset: 0;
+      background: #0a0a0f;
+      z-index: 9999999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: max(24px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+    }
+
+    .setup-logo {
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      color: #7070a0;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+
+    .setup-title {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+
+    .setup-sub {
+      font-size: 13px;
+      color: #7070a0;
+      margin-bottom: 32px;
+      text-align: center;
+    }
+
+    .setup-card {
+      width: 100%;
+      max-width: 400px;
+      background: #13131a;
+      border: 1px solid #2a2a3a;
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 16px;
+    }
+
+    .setup-label {
+      font-size: 11px;
+      color: #7070a0;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      background: #0a0a0f;
+      border: 1px solid #2a2a3a;
+      border-radius: 8px;
+      color: #e8e8f0;
+      font-family: inherit;
+      font-size: 18px;
+      padding: 14px 16px;
+      outline: none;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+    }
+    input[type="text"]::placeholder { color: #404060; }
+    input[type="text"]:focus { border-color: #5b8cff; }
+
+    .mode-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 12px 8px;
+      border: 1px solid #2a2a3a;
+      border-radius: 8px;
+      background: transparent;
+      color: #7070a0;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .mode-btn.active {
+      border-color: #5b8cff;
+      background: rgba(91,140,255,0.1);
+      color: #5b8cff;
+    }
+
+    .connect-btn {
+      width: 100%;
+      padding: 16px;
+      background: #5b8cff;
+      border: none;
+      border-radius: 10px;
+      color: white;
+      font-family: inherit;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+      margin-top: 8px;
+    }
+    .connect-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    #setupStatus {
+      margin-top: 14px;
+      font-size: 13px;
+      color: #7070a0;
+      text-align: center;
+      min-height: 20px;
+    }
+
+    .fullscreen-note {
+      max-width: 400px;
+      color: #9090b0;
+      font-size: 13px;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    /* ======= AR OVERLAY UI ======= */
+    #arUI {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 99999;
+      pointer-events: none;
+      display: none;
+    }
+
+    #statusBar {
+      margin: max(12px, env(safe-area-inset-top)) auto 12px;
+      width: fit-content;
+      max-width: 90%;
+      background: rgba(0,0,0,0.75);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 8px 18px;
+      font-size: 13px;
+      color: #e8e8f0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    .live-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #34d399;
+      animation: pulse 1.5s infinite;
+      flex-shrink: 0;
+    }
+    .wait-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #fbbf24;
+      flex-shrink: 0;
+    }
+    .err-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #f87171;
+      flex-shrink: 0;
+    }
+
+    @keyframes pulse {
+      0%,100% { opacity:1; } 50% { opacity:0.35; }
+    }
+
+    /* 折りたたみメニュー全体 */
+    #menuToggle {
+      position: fixed;
+      bottom: max(18px, env(safe-area-inset-bottom));
+      right: 16px;
+      z-index: 99999;
+      display: none;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    /* メニュー展開時のボタン群 */
+    #menuItems {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.25s ease;
+    }
+    #menuItems.open {
+      max-height: 400px;
+    }
+
+    /* ハンバーガーボタン（常時表示） */
+    #menuToggleBtn {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: rgba(0,0,0,0.82);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #e8e8f0;
+      font-size: 20px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+    #menuToggleBtn.open { transform: rotate(45deg); }
+
+    /* 旧bottomBarは非表示 */
+    #bottomBar {
+      display: none !important;
+    }
+
+    .bar-btn {
+      background: rgba(0,0,0,0.82);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 24px;
+      color: #e8e8f0;
+      font-family: inherit;
+      font-size: 13px;
+      padding: 10px 18px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    /* ======= REMOTE VIDEO (hidden, used as texture) ======= */
+    #remoteVideo {
+      position: fixed;
+      width: 1px; height: 1px;
+      opacity: 0;
+      pointer-events: none;
+      top: -100px;
+    }
+
+    /* ======= VR SPLIT VIEW ======= */
+    #vrContainer {
+      position: fixed;
+      inset: 0;
+      display: none;
+      z-index: 10;
+      background: #000;
+    }
+
+    .vr-overlay {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.7);
+      color: white;
+      font-size: 12px;
+      padding: 6px 14px;
+      border-radius: 12px;
+      white-space: nowrap;
+      z-index: 20;
+    }
+
+    /* 鼻あてセパレータ */
+    #vrDivider {
+      position: fixed;
+      top: 0; bottom: 0;
+      left: 50%;
+      width: 4px;
+      transform: translateX(-50%);
+      background: #000;
+      z-index: 30;
+    }
+
+    /* a-scene canvas sizing fix */
+    a-scene {
+      position: fixed !important;
+      top: 0; left: 0;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    @media (display-mode: standalone), (display-mode: fullscreen) {
+      .fullscreen-only-note { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===========================
+     SETUP SCREEN
+     =========================== -->
+<div id="setupScreen">
+  <div class="setup-logo">AR Connect — Viewer</div>
+  <div class="setup-title">ARで映像を見る</div>
+  <div class="setup-sub">PCと同じ合言葉を入力して接続</div>
+
+  <div class="setup-card">
+    <div class="setup-label">合言葉</div>
+    <input type="text" id="roomInput" placeholder="例: summer2025" maxlength="32" autocomplete="off">
+
+    <div class="setup-label" style="margin-top:4px">表示モード</div>
+    <div class="mode-row">
+      <div class="mode-btn active" data-mode="ar" onclick="selectMode('ar',this)">
+        📷 ARモード<br><span style="font-size:11px;color:inherit;opacity:0.7">マーカーに重ねて表示</span>
+      </div>
+      <div class="mode-btn" data-mode="vr" onclick="selectMode('vr',this)">
+        🥽 VRモード<br><span style="font-size:11px;color:inherit;opacity:0.7">ゴーグル二眼表示</span>
+      </div>
+    </div>
+
+    <button class="connect-btn" id="connectBtn" onclick="startConnect()">接続する</button>
+    <div id="setupStatus"></div>
+  </div>
+  <p class="fullscreen-note fullscreen-only-note">iPhoneはSafariの共有ボタンから「ホーム画面に追加」し、追加したアイコンから開くとURLバーなしで表示できます。</p>
+</div>
+
+
+<!-- ===========================
+     REMOTE VIDEO (AR texture source)
+     =========================== -->
+<video id="remoteVideo" autoplay muted playsinline webkit-playsinline></video>
+
+
+<!-- ===========================
+     AR SCENE
+     =========================== -->
+<a-scene
+  id="arScene"
+  embedded
+  vr-mode-ui="enabled: false"
+  renderer="logarithmicDepthBuffer: true; antialias: true;"
+  arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;">
+
+  <!-- Marker detection only. The video is rendered on the stable anchor below. -->
+  <a-marker
+    preset="hiro"
+    smooth="true"
+    smooth-count="5"
+    smooth-tolerance="0.01"
+    smooth-threshold="2"
+    id="hiroMarker">
+  </a-marker>
+
+  <!-- Keeps the last reliable marker pose when detection is briefly lost. -->
+  <a-entity id="stableAnchor" visible="false">
+    <a-video
+      id="arVideo"
+      src="#remoteVideo"
+      position="0 0.05 0"
+      rotation="-90 0 0"
+      width="3.2"
+      height="1.8"
+      material="shader: flat; side: double;">
+    </a-video>
+  </a-entity>
+
+  <a-entity camera></a-entity>
+</a-scene>
+
+
+<!-- ===========================
+     VR SPLIT SCREEN (Camera passthrough + AR overlay)
+     =========================== -->
+<div id="vrContainer">
+  <!-- 左目 -->
+  <canvas id="vrCanvasL" style="position:absolute;top:0;left:0;width:50%;height:100%;"></canvas>
+  <!-- 右目 -->
+  <canvas id="vrCanvasR" style="position:absolute;top:0;left:50%;width:50%;height:100%;"></canvas>
+  <!-- 鼻あてセパレータ -->
+  <div id="vrDivider"></div>
+  <div class="vr-overlay" id="vrStatus">カメラ起動中...</div>
+</div>
+
+<!-- VR用: スマホカメラ映像（非表示・ソース） -->
+<video id="vrCamVideo" autoplay playsinline webkit-playsinline muted
+  style="position:fixed;width:1px;height:1px;opacity:0.01;top:-200px;pointer-events:none;"></video>
+
+
+<!-- ===========================
+     AR OVERLAY UI
+     =========================== -->
+<div id="arUI">
+  <div id="statusBar">
+    <div class="wait-dot" id="statusDot"></div>
+    <span id="statusText">接続中...</span>
+  </div>
+</div>
+
+<!-- 旧bottomBar（JS互換用・非表示） -->
+<div id="bottomBar" style="display:none"></div>
+
+<!-- 折りたたみメニュー -->
+<div id="menuToggle">
+  <div id="menuItems">
+    <button class="bar-btn" id="muteBtn" onclick="toggleMute()">🔊 音声</button>
+    <button class="bar-btn" onclick="enterFullscreen(true)">⛶ 全画面</button>
+    <button class="bar-btn" id="vrSwitchBtn" onclick="switchToVR()">🥽 VRへ切替</button>
+    <button class="bar-btn" onclick="location.reload()">✕ 切断</button>
+    <!-- 映像サイズスライダー（VRモード時のみ表示） -->
+    <div id="sizeSliderWrap" style="display:none;
+      background:rgba(0,0,0,0.82);
+      backdrop-filter:blur(10px);
+      border:1px solid rgba(255,255,255,0.15);
+      border-radius:16px;
+      padding:10px 16px;
+      min-width:180px;">
+      <div style="font-size:12px;color:#e8e8f0;margin-bottom:6px;text-align:center;">
+        映像サイズ: <span id="sizeLabel">85</span>%
+      </div>
+      <input type="range" id="sizeSlider" min="20" max="100" value="85"
+        style="width:100%;accent-color:#5b8cff;"
+        oninput="onSizeChange(this.value)">
+    </div>
+    <!-- 傾き調整スライダー（AR/VR共通・常時表示） -->
+    <div id="tiltSliderWrap" style="display:none;
+      background:rgba(0,0,0,0.82);
+      backdrop-filter:blur(10px);
+      border:1px solid rgba(255,255,255,0.15);
+      border-radius:16px;
+      padding:10px 16px;
+      min-width:180px;">
+      <div style="font-size:12px;color:#e8e8f0;margin-bottom:6px;text-align:center;">
+        📐 地面との平行: <span id="tiltLabel">0</span>°
+      </div>
+      <input type="range" id="tiltSlider" min="-45" max="45" value="0"
+        step="1"
+        style="width:100%;accent-color:#a78bfa;"
+        oninput="onTiltChange(this.value)">
+    </div>
+  </div>
+  <button id="menuToggleBtn" onclick="toggleMenu()">☰</button>
+</div>
+
+
+<script>
+
+/* ============================================
+   STATE
+   ============================================ */
+const ROOM_PREFIX = "arconnect-room-";
+
+let selectedMode = "ar";
+let peer = null;
+let call = null;
+let remoteStream = null;
+let isMuted = false;
+let markerLocked = false;
+let markerVisible = false;
+
+const remoteVideo = document.getElementById("remoteVideo");
+const arVideo     = document.getElementById("arVideo");
+const arScene     = document.getElementById("arScene");
+const hiroMarker  = document.getElementById("hiroMarker");
+const stableAnchor = document.getElementById("stableAnchor");
+
+const setupScreen  = document.getElementById("setupScreen");
+const setupStatus  = document.getElementById("setupStatus");
+const connectBtn   = document.getElementById("connectBtn");
+const roomInput    = document.getElementById("roomInput");
+
+const arUI       = document.getElementById("arUI");
+const bottomBar  = document.getElementById("bottomBar");
+const statusBar  = document.getElementById("statusBar");
+const statusDot  = document.getElementById("statusDot");
+const statusText = document.getElementById("statusText");
+
+const vrContainer = document.getElementById("vrContainer");
+const vrVideoL    = document.getElementById("vrVideoL");
+const vrVideoR    = document.getElementById("vrVideoR");
+const vrStatus    = document.getElementById("vrStatus");
+
+
+/* ============================================
+   MODE SELECT
+   ============================================ */
+function selectMode(mode, el) {
+  selectedMode = mode;
+  document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
+  el.classList.add("active");
+}
+
+
+/* ============================================
+   STATUS HELPERS
+   ============================================ */
+function setARStatus(msg, state) {
+  statusText.textContent = msg;
+  statusDot.className =
+    state === "live" ? "live-dot" :
+    state === "error" ? "err-dot" : "wait-dot";
+}
+
+
+/* ============================================
+   CONNECT
+   ============================================ */
+function startConnect() {
+  const room = roomInput.value.trim();
+  if (!room) { roomInput.focus(); return; }
+
+  // Fullscreen must be requested directly from the user's tap.
+  enterFullscreen(false);
+
+  connectBtn.disabled = true;
+  setupStatus.textContent = "PeerJS接続中...";
+
+  const viewerId = ROOM_PREFIX + room + "-viewer-" + Math.random().toString(36).slice(2,7);
+  const senderId = ROOM_PREFIX + room + "-sender";
+
+  const PEER_CONFIG = {
+    debug: 1,
+    config: {
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+        { urls: "stun:stun2.l.google.com:19302" },
+        { urls: "stun:stun.cloudflare.com:3478" }
+      ]
+    }
+  };
+
+  let retryCount = 0;
+  const MAX_RETRY = 3;
+
+  function createPeer() {
+    peer = new Peer(PEER_CONFIG);
+
+    peer.on("open", onPeerOpen);
+    peer.on("error", e => {
+      if (e.type === "server-error" && retryCount < MAX_RETRY) {
+        retryCount++;
+        setupStatus.textContent = `サーバー接続中... (${retryCount}/${MAX_RETRY}回目)`;
+        setTimeout(() => { peer.destroy(); createPeer(); }, 2000 * retryCount);
+      } else if (e.type === "peer-unavailable") {
+        setupStatus.textContent = "Senderが見つかりません。PCで先に配信を開始してください。";
+        connectBtn.disabled = false;
+      } else {
+        setupStatus.textContent = "PeerJSエラー: " + e.type;
+        connectBtn.disabled = false;
+      }
+    });
+  }
+
+  createPeer();
+
+  function onPeerOpen(id) {
+    setupStatus.textContent = "Senderへ接続中...";
+
+    // Dummy stream to initiate call
+    const canvas = document.createElement("canvas");
+    canvas.width = 2; canvas.height = 2;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "black";
+    ctx.fillRect(0,0,2,2);
+    const dummy = canvas.captureStream(1);
+
+    call = peer.call(senderId, dummy);
+
+    if (!call) {
+      setupStatus.textContent = "接続失敗（合言葉を確認してください）";
+      connectBtn.disabled = false;
+      return;
+    }
+
+    // ICE monitoring
+    if (call.peerConnection) {
+      call.peerConnection.addEventListener("iceconnectionstatechange", () => {
+        const s = call.peerConnection.iceConnectionState;
+        if (selectedMode === "ar") setARStatus("ICE: " + s, "");
+      });
+    }
+
+    call.on("stream", stream => {
+      remoteStream = stream;
+
+      // --- AR MODE ---
+      if (selectedMode === "ar") {
+        launchAR(stream);
+      }
+      // --- VR MODE ---
+      else {
+        launchVR(stream);
+      }
+    });
+
+    call.on("close", () => {
+      if (selectedMode === "ar") setARStatus("接続切断", "error");
+      else vrStatus.textContent = "接続切断";
+    });
+
+    call.on("error", e => {
+      setupStatus.textContent = "エラー: " + e;
+      connectBtn.disabled = false;
+    });
+  }
+}
+
+
+/* ============================================
+   LAUNCH AR
+   ============================================ */
+function launchAR(stream) {
+  // Hide setup
+  setupScreen.style.display = "none";
+
+  // Show AR UI
+  arUI.style.display = "block";
+  showMenu();
+
+  setARStatus("映像受信中...", "");
+
+  // Audio: remoteVideo plays audio
+  // (muted=false after play so iOS allows it via user gesture)
+  remoteVideo.srcObject = stream;
+  remoteVideo.muted = false;   // audio ON
+  remoteVideo.volume = 1.0;
+
+  remoteVideo.onloadedmetadata = async () => {
+    try {
+      await remoteVideo.play();
+      setARStatus("LIVE — Hiroマーカーを映してください", "live");
+      refreshARTexture();
+    } catch(e) {
+      // iOS autoplay block: show tap to play
+      setARStatus("画面をタップして再生", "");
+      document.addEventListener("click", async () => {
+        await remoteVideo.play();
+        setARStatus("LIVE — Hiroマーカーを映してください", "live");
+        refreshARTexture();
+      }, { once: true });
+    }
+  };
+
+  // Marker events
+  hiroMarker.addEventListener("markerFound", () => {
+    markerVisible = true;
+    setARStatus(markerLocked ? "LIVE — 位置を補正中 📍" : "LIVE — マーカー認識中 📍", "live");
+  });
+  hiroMarker.addEventListener("markerLost", () => {
+    markerVisible = false;
+    setARStatus(markerLocked ? "LIVE — 最後の位置を保持中" : "LIVE — マーカーを映してください", "live");
+  });
+
+  startStableMarkerLock();
+}
+
+
+/* ============================================
+   STABLE MARKER LOCK
+   マーカーが見えている間だけ映像を表示。
+   傾き（tiltAngle）をarVideoのX回転に反映。
+   ============================================ */
+function startStableMarkerLock() {
+  if (startStableMarkerLock.running) return;
+  startStableMarkerLock.running = true;
+
+  const targetPosition   = new THREE.Vector3();
+  const targetQuaternion = new THREE.Quaternion();
+  const targetScale      = new THREE.Vector3();
+  const markerObject = hiroMarker.object3D;
+  const anchorObject = stableAnchor.object3D;
+
+  // 傾きスライダーをARモードでも表示
+  document.getElementById("tiltSliderWrap").style.display = "block";
+
+  let stableFrames = 0;
+
+  function update() {
+    if (markerVisible && markerObject.visible) {
+      markerObject.updateMatrixWorld(true);
+      markerObject.matrixWorld.decompose(targetPosition, targetQuaternion, targetScale);
+
+      const lerpFactor = stableFrames < 30 ? 0.5 : 0.06;
+      anchorObject.position.lerp(targetPosition, lerpFactor);
+      anchorObject.quaternion.slerp(targetQuaternion, lerpFactor);
+      anchorObject.scale.lerp(targetScale, lerpFactor);
+      stableFrames = Math.min(stableFrames + 1, 60);
+
+      anchorObject.visible = true;
+      anchorObject.updateMatrixWorld(true);
+
+      // 傾き調整: arVideoのX回転に tiltAngle を加算
+      if (arVideo) {
+        const baseRot = -90; // 机に平置きするための基本回転
+        arVideo.setAttribute("rotation", `${baseRot + tiltAngle} 0 0`);
+      }
+    } else {
+      // マーカーが見えなくなったら非表示
+      anchorObject.visible = false;
+      stableFrames = 0;
+    }
+
+    requestAnimationFrame(update);
+  }
+
+  update();
+}
+
+
+/* ============================================
+   FULLSCREEN / STANDALONE
+   ============================================ */
+async function enterFullscreen(showHelp) {
+  const root = document.documentElement;
+  const request = root.requestFullscreen || root.webkitRequestFullscreen;
+
+  if (request && !document.fullscreenElement && !document.webkitFullscreenElement) {
+    try {
+      await request.call(root);
+      if (screen.orientation && screen.orientation.lock) {
+        screen.orientation.lock("landscape").catch(() => {});
+      }
+      return;
+    } catch (_) {}
+  }
+
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  if (showHelp && !isStandalone) {
+    alert("iPhoneではSafariの共有ボタン →『ホーム画面に追加』→ 追加したAR Connectのアイコンから開くと、URLバーなしで全画面表示できます。");
+  }
+}
+
+
+/* ============================================
+   LAUNCH VR
+   ・背面カメラ映像を左右Canvasにパススルー表示
+   ・AR.jsのmarkerFound/Lostイベントで
+     マーカー検出中のみ受信映像を中央に重ねる
+   ============================================ */
+async function launchVR(rStream) {
+  setupScreen.style.display = "none";
+  vrContainer.style.display = "block";
+  showMenu();
+  hideVRSwitchBtn();
+
+  const vrStatusEl = document.getElementById("vrStatus");
+  const vrCamVideo = document.getElementById("vrCamVideo");
+  const canvasL    = document.getElementById("vrCanvasL");
+  const canvasR    = document.getElementById("vrCanvasR");
+  const ctxL       = canvasL.getContext("2d");
+  const ctxR       = canvasR.getContext("2d");
+
+  // ---- 受信映像（相手）再生 ----
+  remoteVideo.srcObject = rStream;
+  remoteVideo.muted = true;
+  remoteVideo.play().then(() => { remoteVideo.muted = false; }).catch(() => {});
+
+  // ---- 自分の手元: 背面カメラ取得 ----
+  let camStream;
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { exact: "environment" },
+               width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+  } catch(e) {
+    try {
+      camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    } catch(e2) {
+      vrStatusEl.textContent = "カメラ取得失敗: " + e2.message;
+      return;
+    }
+  }
+  vrCamVideo.srcObject = camStream;
+  await vrCamVideo.play();
+
+  // A-Frameシーンは透明で残してマーカー検出を継続
+  arScene.style.opacity = "0";
+  arScene.style.pointerEvents = "none";
+
+  // 傾きスライダーをVRモードでも表示
+  document.getElementById("tiltSliderWrap").style.display = "block";
+
+  // ---- 状態管理 ----
+  let markerDetected = false;
+  let livePos = null;
+
+  hiroMarker.addEventListener("markerFound", () => {
+    markerDetected = true;
+    vrStatusEl.style.display = "block";
+    vrStatusEl.textContent = "📍 マーカー認識中";
+    setTimeout(() => { vrStatusEl.style.display = "none"; }, 1000);
+  });
+
+  hiroMarker.addEventListener("markerLost", () => {
+    markerDetected = false;
+    livePos = null; // マーカーが消えたら映像も消える
+  });
+
+  vrStatusEl.textContent = "LIVE 🟢 — Hiroマーカーを机に置いて映してください";
+
+  // ---- Canvas リサイズ ----
+  function resize() {
+    const eyeW = Math.floor(window.innerWidth / 2);
+    const eyeH = window.innerHeight;
+    canvasL.width = eyeW; canvasL.height = eyeH;
+    canvasR.width = eyeW; canvasR.height = eyeH;
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  // ---- マーカー位置をフレームごとに取得（角度だけ固定）----
+  function updateLivePos(W, H) {
+    if (!markerDetected) { livePos = null; return; }
+
+    const cam = arScene.camera;
+    if (!cam) return;
+
+    const markerObj = hiroMarker.object3D;
+    markerObj.updateMatrixWorld(true);
+
+    const wPos = new THREE.Vector3();
+    markerObj.getWorldPosition(wPos);
+    const projected = wPos.clone().project(cam);
+
+    if (projected.z >= 1) { livePos = null; return; }
+
+    const cx = ( projected.x * 0.5 + 0.5) * W;
+    const cy = (-projected.y * 0.5 + 0.5) * H;
+
+    // サイズ: スライダーで調整可能
+    const rw = W * vrVideoSize;
+    const rh = rw * (9 / 16);
+
+    livePos = { cx, cy, rw, rh };
+  }
+
+  // ---- 1目分の描画 ----
+  function drawEye(ctx, W, H) {
+    // 背景: 自分の手元（背面カメラ）をフル表示
+    if (vrCamVideo.readyState >= 2) {
+      const vw = vrCamVideo.videoWidth  || W;
+      const vh = vrCamVideo.videoHeight || H;
+      const sc = Math.max(W / vw, H / vh);
+      ctx.drawImage(vrCamVideo,
+        (W - vw * sc) / 2, (H - vh * sc) / 2,
+        vw * sc, vh * sc);
+    } else {
+      ctx.fillStyle = "#111";
+      ctx.fillRect(0, 0, W, H);
+    }
+
+    // 相手の映像: マーカー検出中のみ、固定角度でリアルタイム位置に表示
+    if (livePos && remoteVideo.readyState >= 2) {
+      const { cx, cy, rw, rh } = livePos;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(tiltAngle * Math.PI / 180);
+      ctx.shadowColor = "rgba(0,0,0,0.6)";
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = "rgba(0,0,0,0.2)";
+      ctx.fillRect(-rw/2 - 4, -rh/2 - 4, rw + 8, rh + 8);
+      ctx.shadowBlur = 0;
+      ctx.drawImage(remoteVideo, -rw/2, -rh/2, rw, rh);
+      ctx.restore();
+    }
+
+    // ガイドテキスト（未検出時）
+    if (!markerDetected) {
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.font = `${Math.max(12, Math.floor(W * 0.036))}px sans-serif`;
+      ctx.textAlign = "center";
+      ctx.fillText("Hiroマーカーを机に置いて映してください", W / 2, H * 0.92);
+      ctx.textAlign = "left";
+    }
+  }
+
+  // ---- 描画ループ ----
+  let frameId;
+  function loop() {
+    const W = canvasL.width, H = canvasL.height;
+    updateLivePos(W, H); // 左目基準で位置計算（両目共通）
+    drawEye(ctxL, W, H);
+    drawEye(ctxR, canvasR.width, canvasR.height);
+    frameId = requestAnimationFrame(loop);
+  }
+  loop();
+
+  window.addEventListener("beforeunload", () => cancelAnimationFrame(frameId));
+}
+
+
+/* ============================================
+   SWITCH MODES AT RUNTIME
+   ============================================ */
+function switchToVR() {
+  if (!remoteStream) return;
+  arUI.style.display = "none";
+  launchVR(remoteStream);
+}
+
+
+/* ============================================
+   COLLAPSIBLE MENU
+   ============================================ */
+const menuToggle    = document.getElementById("menuToggle");
+const menuItems     = document.getElementById("menuItems");
+const menuToggleBtn = document.getElementById("menuToggleBtn");
+
+function showMenu() {
+  menuToggle.style.display = "flex";
+}
+
+function toggleMenu() {
+  const isOpen = menuItems.classList.toggle("open");
+  menuToggleBtn.classList.toggle("open", isOpen);
+  menuToggleBtn.textContent = isOpen ? "✕" : "☰";
+  // 3秒後に自動で閉じる
+  if (isOpen) {
+    clearTimeout(toggleMenu._timer);
+    toggleMenu._timer = setTimeout(() => {
+      menuItems.classList.remove("open");
+      menuToggleBtn.classList.remove("open");
+      menuToggleBtn.textContent = "☰";
+    }, 4000);
+  }
+}
+
+// VRモード時はVRへ切替ボタンを隠してスライダーを表示
+function hideVRSwitchBtn() {
+  const b = document.getElementById("vrSwitchBtn");
+  if (b) b.style.display = "none";
+  document.getElementById("sizeSliderWrap").style.display = "block";
+}
+
+// 映像サイズ比率（0〜1）
+let vrVideoSize = 0.85;
+
+function onSizeChange(val) {
+  vrVideoSize = parseInt(val) / 100;
+  document.getElementById("sizeLabel").textContent = val;
+}
+
+// 傾き角度（度数）: 地面との平行調整
+let tiltAngle = 0;
+
+function onTiltChange(val) {
+  tiltAngle = parseInt(val);
+  document.getElementById("tiltLabel").textContent = val;
+}
+
+// 傾きスライダーをメニュー表示時に出す
+function showTiltSlider() {
+  document.getElementById("tiltSliderWrap").style.display = "block";
+}
+
+
+/* ============================================
+   AUDIO TOGGLE
+   ============================================ */
+function toggleMute() {
+  isMuted = !isMuted;
+  remoteVideo.muted = isMuted;
+  const btn = document.getElementById("muteBtn");
+  if (btn) btn.textContent = isMuted ? "🔇 音声" : "🔊 音声";
+}
+
+
+/* ============================================
+   AR TEXTURE REFRESH
+   ============================================ */
+function refreshARTexture() {
+  if (!arVideo) return;
+  arVideo.setAttribute("src", "");
+  setTimeout(() => {
+    arVideo.setAttribute("src", "#remoteVideo");
+  }, 100);
+}
+
+</script>
+</body>
+</html>
