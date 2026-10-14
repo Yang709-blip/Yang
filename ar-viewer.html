@@ -367,15 +367,15 @@
   id="arScene"
   embedded
   vr-mode-ui="enabled: false"
-  renderer="logarithmicDepthBuffer: true; antialias: true;"
+  renderer="logarithmicDepthBuffer: true; antialias: true; alpha: true;"
   arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;">
 
   <a-marker
     preset="hiro"
     smooth="true"
-    smooth-count="15"
+    smooth-count="5"
     smooth-tolerance="0.005"
-    smooth-threshold="5"
+    smooth-threshold="2"
     id="hiroMarker">
 
     <!-- 映像をマーカー直下に配置 -->
@@ -509,6 +509,34 @@ const vrContainer = document.getElementById("vrContainer");
 const vrVideoL    = document.getElementById("vrVideoL");
 const vrVideoR    = document.getElementById("vrVideoR");
 const vrStatus    = document.getElementById("vrStatus");
+
+// Register before connecting: the marker may already be in view.
+hiroMarker.addEventListener("markerFound", () => {
+  markerVisible = true;
+  if (remoteStream && selectedMode === "ar") {
+    setARStatus("Hiro認識済み — " + (remoteVideo.readyState >= 2 && !remoteVideo.paused ? "映像表示中" : "映像の再生待ち"), "live");
+  }
+});
+hiroMarker.addEventListener("markerLost", () => {
+  markerVisible = false;
+  if (remoteStream && selectedMode === "ar") setARStatus("映像受信中 — Hiroマーカーを映してください", "");
+});
+
+function waitForTrackingCamera() {
+  return new Promise((resolve, reject) => {
+    const started = Date.now();
+    function check() {
+      const video = document.getElementById("arjs-video") ||
+        Array.from(document.querySelectorAll("video")).find(v =>
+          v !== remoteVideo && v.id !== "vrCamVideo" && v.srcObject);
+      if (video && video.readyState >= 2 && !video.paused) return resolve(video);
+      if (Date.now() - started > 15000) return reject(new Error("マーカー検出用カメラが起動していません。Safariのカメラ許可を確認して再読み込みしてください。"));
+      setTimeout(check, 100);
+    }
+    check();
+  });
+}
+
 
 
 /* ============================================
@@ -650,6 +678,7 @@ function launchAR(stream) {
 
   setARStatus("映像受信中...", "");
 
+  isMuted = true;
   // iOSはmuted=trueでないと自動再生不可 → 再生後にmuted解除
   remoteVideo.srcObject = stream;
   remoteVideo.muted = true;
@@ -658,16 +687,16 @@ function launchAR(stream) {
   const doPlay = async () => {
     try {
       await remoteVideo.play();
-      remoteVideo.muted = false; // 再生できたら音声ON
-      setARStatus("LIVE — Hiroマーカーを映してください", "live");
+      // Keep muted on Safari; audio is enabled explicitly with the audio button.
+      setARStatus(markerVisible ? "Hiro認識済み — 映像表示中" : "映像受信中 — Hiroマーカーを映してください", "live");
       setTimeout(refreshARTexture, 300);
       setTimeout(refreshARTexture, 1000);
     } catch(e) {
       setARStatus("画面をタップして再生", "");
       document.addEventListener("click", async () => {
-        remoteVideo.muted = false;
+        remoteVideo.muted = true;
         await remoteVideo.play();
-        setARStatus("LIVE — Hiroマーカーを映してください", "live");
+        setARStatus(markerVisible ? "Hiro認識済み — 映像表示中" : "映像受信中 — Hiroマーカーを映してください", "live");
         setTimeout(refreshARTexture, 300);
         setTimeout(refreshARTexture, 1000);
       }, { once: true });
@@ -679,16 +708,6 @@ function launchAR(stream) {
   } else {
     remoteVideo.onloadedmetadata = doPlay;
   }
-
-  // Marker events
-  hiroMarker.addEventListener("markerFound", () => {
-    markerVisible = true;
-    setARStatus("LIVE — マーカー認識中 📍", "live");
-  });
-  hiroMarker.addEventListener("markerLost", () => {
-    markerVisible = false;
-    setARStatus("LIVE — Hiroマーカーを映してください", "live");
-  });
 
   // A-Frameシーンの初期化完了を待ってからマーカーロック開始
   if (arScene.hasLoaded) {
@@ -775,26 +794,21 @@ async function launchVR(rStream) {
   // ---- 受信映像（相手）再生 ----
   remoteVideo.srcObject = rStream;
   remoteVideo.muted = true;
-  remoteVideo.play().then(() => { remoteVideo.muted = false; }).catch(() => {});
-
-  // ---- 自分の手元: 背面カメラ取得 ----
-  let camStream;
-  try {
-    camStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { exact: "environment" },
-               width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false
-    });
-  } catch(e) {
-    try {
-      camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-    } catch(e2) {
-      vrStatusEl.textContent = "カメラ取得失敗: " + e2.message;
-      return;
-    }
+  isMuted = true;
+  try { await remoteVideo.play(); } catch(e) {
+    vrStatusEl.textContent = "画面をタップして受信映像を再生";
+    document.addEventListener("click", () => remoteVideo.play().catch(() => {}), { once: true });
   }
-  vrCamVideo.srcObject = camStream;
-  await vrCamVideo.play();
+
+  // Use the same camera frames for tracking and the VR background.
+  // A second getUserMedia call can interrupt tracking on iOS.
+  let trackingVideo;
+  try {
+    trackingVideo = await waitForTrackingCamera();
+  } catch(e) {
+    vrStatusEl.textContent = e.message;
+    return;
+  }
 
   // A-Frameシーンは透明で残してマーカー検出を継続
   arScene.style.opacity = "0";
@@ -804,7 +818,7 @@ async function launchVR(rStream) {
   document.getElementById("tiltSliderWrap").style.display = "block";
 
   // ---- 状態管理 ----
-  let markerDetected = false;
+  let markerDetected = markerVisible;
   let livePos = null;
 
   hiroMarker.addEventListener("markerFound", () => {
@@ -860,11 +874,11 @@ async function launchVR(rStream) {
   // ---- 1目分の描画 ----
   function drawEye(ctx, W, H) {
     // 背景: 自分の手元（背面カメラ）をフル表示
-    if (vrCamVideo.readyState >= 2) {
-      const vw = vrCamVideo.videoWidth  || W;
-      const vh = vrCamVideo.videoHeight || H;
+    if (trackingVideo.readyState >= 2) {
+      const vw = trackingVideo.videoWidth  || W;
+      const vh = trackingVideo.videoHeight || H;
       const sc = Math.max(W / vw, H / vh);
-      ctx.drawImage(vrCamVideo,
+      ctx.drawImage(trackingVideo,
         (W - vw * sc) / 2, (H - vh * sc) / 2,
         vw * sc, vh * sc);
     } else {
@@ -992,11 +1006,22 @@ function toggleMute() {
    AR TEXTURE REFRESH
    ============================================ */
 function refreshARTexture() {
-  if (!arVideo) return;
-  arVideo.setAttribute("src", "");
-  setTimeout(() => {
-    arVideo.setAttribute("src", "#remoteVideo");
-  }, 100);
+  if (!arVideo || remoteVideo.readyState < 2) return;
+  const mesh = arVideo.getObject3D("mesh");
+  if (!mesh) {
+    arVideo.addEventListener("object3dset", refreshARTexture, { once: true });
+    return;
+  }
+  const THREE = AFRAME.THREE;
+  if (!refreshARTexture.texture) {
+    refreshARTexture.texture = new THREE.VideoTexture(remoteVideo);
+    refreshARTexture.texture.colorSpace = THREE.SRGBColorSpace;
+    refreshARTexture.texture.minFilter = THREE.LinearFilter;
+    refreshARTexture.texture.magFilter = THREE.LinearFilter;
+  }
+  mesh.material.map = refreshARTexture.texture;
+  mesh.material.color.set(0xffffff);
+  mesh.material.needsUpdate = true;
 }
 
 </script>
