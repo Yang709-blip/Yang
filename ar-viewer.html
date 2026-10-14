@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="AR Connect">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#000000">
+  <meta name="theme-color" content="#f5efe5">
   <link rel="manifest" href="/manifest.webmanifest">
   <title>AR Viewer</title>
 
@@ -22,8 +22,8 @@
 
     body {
       font-family: 'Inter', sans-serif;
-      background: #0a0a0f;
-      color: #e8e8f0;
+      background: #f5efe5;
+      color: #382d25;
       overflow: hidden;
       width: 100vw;
       height: 100vh;
@@ -35,7 +35,7 @@
     #setupScreen {
       position: fixed;
       inset: 0;
-      background: #0a0a0f;
+      background: #f5efe5;
       z-index: 9999999;
       display: flex;
       flex-direction: column;
@@ -47,7 +47,7 @@
     .setup-logo {
       font-size: 10px;
       letter-spacing: 0.18em;
-      color: #7070a0;
+      color: #756453;
       text-transform: uppercase;
       margin-bottom: 28px;
     }
@@ -61,7 +61,7 @@
 
     .setup-sub {
       font-size: 13px;
-      color: #7070a0;
+      color: #756453;
       margin-bottom: 32px;
       text-align: center;
     }
@@ -69,8 +69,8 @@
     .setup-card {
       width: 100%;
       max-width: 400px;
-      background: #13131a;
-      border: 1px solid #2a2a3a;
+      background: #fffaf2;
+      border: 1px solid #d9cbbb;
       border-radius: 14px;
       padding: 24px;
       margin-bottom: 16px;
@@ -78,17 +78,17 @@
 
     .setup-label {
       font-size: 11px;
-      color: #7070a0;
+      color: #756453;
       letter-spacing: 0.08em;
       margin-bottom: 12px;
     }
 
     input[type="text"] {
       width: 100%;
-      background: #0a0a0f;
-      border: 1px solid #2a2a3a;
+      background: #f5efe5;
+      border: 1px solid #d9cbbb;
       border-radius: 8px;
-      color: #e8e8f0;
+      color: #382d25;
       font-family: inherit;
       font-size: 18px;
       padding: 14px 16px;
@@ -96,8 +96,8 @@
       letter-spacing: 0.06em;
       margin-bottom: 12px;
     }
-    input[type="text"]::placeholder { color: #404060; }
-    input[type="text"]:focus { border-color: #5b8cff; }
+    input[type="text"]::placeholder { color: #8b7967; }
+    input[type="text"]:focus { border-color: #8a5a3b; }
 
     .mode-row {
       display: flex;
@@ -108,10 +108,10 @@
     .mode-btn {
       flex: 1;
       padding: 12px 8px;
-      border: 1px solid #2a2a3a;
+      border: 1px solid #d9cbbb;
       border-radius: 8px;
       background: transparent;
-      color: #7070a0;
+      color: #756453;
       font-family: inherit;
       font-size: 13px;
       cursor: pointer;
@@ -119,15 +119,15 @@
       text-align: center;
     }
     .mode-btn.active {
-      border-color: #5b8cff;
-      background: rgba(91,140,255,0.1);
-      color: #5b8cff;
+      border-color: #8a5a3b;
+      background: rgba(138,90,59,0.1);
+      color: #8a5a3b;
     }
 
     .connect-btn {
       width: 100%;
       padding: 16px;
-      background: #5b8cff;
+      background: #8a5a3b;
       border: none;
       border-radius: 10px;
       color: white;
@@ -143,14 +143,14 @@
     #setupStatus {
       margin-top: 14px;
       font-size: 13px;
-      color: #7070a0;
+      color: #756453;
       text-align: center;
       min-height: 20px;
     }
 
     .fullscreen-note {
       max-width: 400px;
-      color: #9090b0;
+      color: #756453;
       font-size: 13px;
       line-height: 1.6;
       text-align: center;
@@ -169,13 +169,13 @@
       margin: max(12px, env(safe-area-inset-top)) auto 12px;
       width: fit-content;
       max-width: 90%;
-      background: rgba(0,0,0,0.75);
+      background: rgba(255,250,242,0.95);
       backdrop-filter: blur(8px);
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid rgba(138,90,59,0.2);
       border-radius: 20px;
       padding: 8px 18px;
       font-size: 13px;
-      color: #e8e8f0;
+      color: #382d25;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -185,20 +185,20 @@
     .live-dot {
       width: 8px; height: 8px;
       border-radius: 50%;
-      background: #34d399;
+      background: #24805a;
       animation: pulse 1.5s infinite;
       flex-shrink: 0;
     }
     .wait-dot {
       width: 8px; height: 8px;
       border-radius: 50%;
-      background: #fbbf24;
+      background: #aa720c;
       flex-shrink: 0;
     }
     .err-dot {
       width: 8px; height: 8px;
       border-radius: 50%;
-      background: #f87171;
+      background: #bd433b;
       flex-shrink: 0;
     }
 
@@ -237,10 +237,10 @@
     #menuToggleBtn {
       width: 48px; height: 48px;
       border-radius: 50%;
-      background: rgba(0,0,0,0.82);
+      background: rgba(255,250,242,0.96);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.2);
-      color: #e8e8f0;
+      border: 1px solid rgba(138,90,59,0.3);
+      color: #382d25;
       font-size: 20px;
       display: flex; align-items: center; justify-content: center;
       cursor: pointer;
@@ -255,11 +255,11 @@
     }
 
     .bar-btn {
-      background: rgba(0,0,0,0.82);
+      background: rgba(255,250,242,0.96);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.15);
+      border: 1px solid rgba(138,90,59,0.25);
       border-radius: 24px;
-      color: #e8e8f0;
+      color: #382d25;
       font-family: inherit;
       font-size: 13px;
       padding: 10px 18px;
@@ -439,33 +439,33 @@
     <button class="bar-btn" onclick="location.reload()">✕ 切断</button>
     <!-- 映像サイズスライダー（VRモード時のみ表示） -->
     <div id="sizeSliderWrap" style="display:none;
-      background:rgba(0,0,0,0.82);
+      background:rgba(255,250,242,0.96);
       backdrop-filter:blur(10px);
-      border:1px solid rgba(255,255,255,0.15);
+      border:1px solid rgba(138,90,59,0.25);
       border-radius:16px;
       padding:10px 16px;
       min-width:180px;">
-      <div style="font-size:12px;color:#e8e8f0;margin-bottom:6px;text-align:center;">
+      <div style="font-size:12px;color:#382d25;margin-bottom:6px;text-align:center;">
         映像サイズ: <span id="sizeLabel">85</span>%
       </div>
       <input type="range" id="sizeSlider" min="20" max="100" value="85"
-        style="width:100%;accent-color:#5b8cff;"
+        style="width:100%;accent-color:#8a5a3b;"
         oninput="onSizeChange(this.value)">
     </div>
     <!-- 傾き調整スライダー（AR/VR共通・常時表示） -->
     <div id="tiltSliderWrap" style="display:none;
-      background:rgba(0,0,0,0.82);
+      background:rgba(255,250,242,0.96);
       backdrop-filter:blur(10px);
-      border:1px solid rgba(255,255,255,0.15);
+      border:1px solid rgba(138,90,59,0.25);
       border-radius:16px;
       padding:10px 16px;
       min-width:180px;">
-      <div style="font-size:12px;color:#e8e8f0;margin-bottom:6px;text-align:center;">
+      <div style="font-size:12px;color:#382d25;margin-bottom:6px;text-align:center;">
         📐 地面との平行: <span id="tiltLabel">0</span>°
       </div>
       <input type="range" id="tiltSlider" min="-45" max="45" value="0"
         step="1"
-        style="width:100%;accent-color:#a78bfa;"
+        style="width:100%;accent-color:#976a50;"
         oninput="onTiltChange(this.value)">
     </div>
   </div>
