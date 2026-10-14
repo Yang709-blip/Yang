@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="AR Connect">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#fffaf2">
+  <meta name="theme-color" content="#000000">
   <link rel="manifest" href="/manifest.webmanifest">
   <title>AR Viewer</title>
 
@@ -22,8 +22,8 @@
 
     body {
       font-family: 'Inter', sans-serif;
-      background: #fffaf2;
-      color: #382d25;
+      background: #0a0a0f;
+      color: #e8e8f0;
       overflow: hidden;
       width: 100vw;
       height: 100vh;
@@ -35,7 +35,7 @@
     #setupScreen {
       position: fixed;
       inset: 0;
-      background: #fffaf2;
+      background: #0a0a0f;
       z-index: 9999999;
       display: flex;
       flex-direction: column;
@@ -47,7 +47,7 @@
     .setup-logo {
       font-size: 10px;
       letter-spacing: 0.18em;
-      color: #756453;
+      color: #7070a0;
       text-transform: uppercase;
       margin-bottom: 28px;
     }
@@ -61,7 +61,7 @@
 
     .setup-sub {
       font-size: 13px;
-      color: #756453;
+      color: #7070a0;
       margin-bottom: 32px;
       text-align: center;
     }
@@ -69,8 +69,8 @@
     .setup-card {
       width: 100%;
       max-width: 400px;
-      background: #ffffff;
-      border: 1px solid #e8ddce;
+      background: #13131a;
+      border: 1px solid #2a2a3a;
       border-radius: 14px;
       padding: 24px;
       margin-bottom: 16px;
@@ -78,17 +78,17 @@
 
     .setup-label {
       font-size: 11px;
-      color: #756453;
+      color: #7070a0;
       letter-spacing: 0.08em;
       margin-bottom: 12px;
     }
 
     input[type="text"] {
       width: 100%;
-      background: #fffaf2;
-      border: 1px solid #e8ddce;
+      background: #0a0a0f;
+      border: 1px solid #2a2a3a;
       border-radius: 8px;
-      color: #382d25;
+      color: #e8e8f0;
       font-family: inherit;
       font-size: 18px;
       padding: 14px 16px;
@@ -96,8 +96,8 @@
       letter-spacing: 0.06em;
       margin-bottom: 12px;
     }
-    input[type="text"]::placeholder { color: #8b7967; }
-    input[type="text"]:focus { border-color: #8a5a3b; }
+    input[type="text"]::placeholder { color: #404060; }
+    input[type="text"]:focus { border-color: #5b8cff; }
 
     .mode-row {
       display: flex;
@@ -108,10 +108,10 @@
     .mode-btn {
       flex: 1;
       padding: 12px 8px;
-      border: 1px solid #e8ddce;
+      border: 1px solid #2a2a3a;
       border-radius: 8px;
       background: transparent;
-      color: #756453;
+      color: #7070a0;
       font-family: inherit;
       font-size: 13px;
       cursor: pointer;
@@ -119,15 +119,15 @@
       text-align: center;
     }
     .mode-btn.active {
-      border-color: #8a5a3b;
-      background: rgba(138,90,59,0.1);
-      color: #8a5a3b;
+      border-color: #5b8cff;
+      background: rgba(91,140,255,0.1);
+      color: #5b8cff;
     }
 
     .connect-btn {
       width: 100%;
       padding: 16px;
-      background: #8a5a3b;
+      background: #5b8cff;
       border: none;
       border-radius: 10px;
       color: white;
@@ -143,14 +143,14 @@
     #setupStatus {
       margin-top: 14px;
       font-size: 13px;
-      color: #756453;
+      color: #7070a0;
       text-align: center;
       min-height: 20px;
     }
 
     .fullscreen-note {
       max-width: 400px;
-      color: #756453;
+      color: #9090b0;
       font-size: 13px;
       line-height: 1.6;
       text-align: center;
@@ -169,13 +169,13 @@
       margin: max(12px, env(safe-area-inset-top)) auto 12px;
       width: fit-content;
       max-width: 90%;
-      background: rgba(255,255,255,0.95);
+      background: rgba(0,0,0,0.75);
       backdrop-filter: blur(8px);
-      border: 1px solid rgba(138,90,59,0.2);
+      border: 1px solid rgba(255,255,255,0.1);
       border-radius: 20px;
       padding: 8px 18px;
       font-size: 13px;
-      color: #382d25;
+      color: #e8e8f0;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -185,20 +185,20 @@
     .live-dot {
       width: 8px; height: 8px;
       border-radius: 50%;
-      background: #24805a;
+      background: #34d399;
       animation: pulse 1.5s infinite;
       flex-shrink: 0;
     }
     .wait-dot {
       width: 8px; height: 8px;
       border-radius: 50%;
-      background: #aa720c;
+      background: #fbbf24;
       flex-shrink: 0;
     }
     .err-dot {
       width: 8px; height: 8px;
       border-radius: 50%;
-      background: #bd433b;
+      background: #f87171;
       flex-shrink: 0;
     }
 
@@ -237,10 +237,10 @@
     #menuToggleBtn {
       width: 48px; height: 48px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.96);
+      background: rgba(0,0,0,0.82);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(138,90,59,0.3);
-      color: #382d25;
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #e8e8f0;
       font-size: 20px;
       display: flex; align-items: center; justify-content: center;
       cursor: pointer;
@@ -255,11 +255,11 @@
     }
 
     .bar-btn {
-      background: rgba(255,255,255,0.96);
+      background: rgba(0,0,0,0.82);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(138,90,59,0.25);
+      border: 1px solid rgba(255,255,255,0.15);
       border-radius: 24px;
-      color: #382d25;
+      color: #e8e8f0;
       font-family: inherit;
       font-size: 13px;
       padding: 10px 18px;
@@ -270,16 +270,10 @@
     /* ======= REMOTE VIDEO (hidden, used as texture) ======= */
     #remoteVideo {
       position: fixed;
-      width: 112px; height: 63px;
-      object-fit: contain;
-      background: #382d25;
-      border: 1px solid #e8ddce;
-      border-radius: 8px;
+      width: 1px; height: 1px;
+      opacity: 0;
       pointer-events: none;
-      left: 12px;
-      bottom: max(12px, env(safe-area-inset-bottom));
-      z-index: 99998;
-      display: none;
+      top: -100px;
     }
 
     /* ======= VR SPLIT VIEW ======= */
@@ -341,7 +335,7 @@
 
   <div class="setup-card">
     <div class="setup-label">合言葉</div>
-    <input type="text" id="roomInput" placeholder="例: cardgame" maxlength="32" autocomplete="off">
+    <input type="text" id="roomInput" placeholder="例: summer2025" maxlength="32" autocomplete="off">
 
     <div class="setup-label" style="margin-top:4px">表示モード</div>
     <div class="mode-row">
@@ -364,7 +358,6 @@
      REMOTE VIDEO (AR texture source)
      =========================== -->
 <video id="remoteVideo" autoplay muted playsinline webkit-playsinline></video>
-<audio id="remoteAudio" playsinline></audio>
 
 
 <!-- ===========================
@@ -374,21 +367,26 @@
   id="arScene"
   embedded
   vr-mode-ui="enabled: false"
-  renderer="logarithmicDepthBuffer: true; antialias: true; alpha: true;"
+  renderer="logarithmicDepthBuffer: true; antialias: true;"
   arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;">
+
+  <!-- remoteVideoをA-Frameアセットとして登録 -->
+  <a-assets>
+    <video id="arVideoSrc" autoplay muted playsinline webkit-playsinline
+      style="display:none"></video>
+  </a-assets>
 
   <a-marker
     preset="hiro"
     smooth="true"
-    smooth-count="5"
+    smooth-count="15"
     smooth-tolerance="0.005"
-    smooth-threshold="2"
+    smooth-threshold="5"
     id="hiroMarker">
 
-    <!-- 映像をマーカー直下に配置 -->
     <a-video
       id="arVideo"
-      src="#remoteVideo"
+      src="#arVideoSrc"
       position="0 0.05 0"
       rotation="-90 0 0"
       width="3.2"
@@ -399,9 +397,7 @@
 
   </a-marker>
 
-  <!-- stableAnchorは互換用に残す（非表示） -->
   <a-entity id="stableAnchor" visible="false"></a-entity>
-
   <a-entity camera></a-entity>
 </a-scene>
 
@@ -446,33 +442,33 @@
     <button class="bar-btn" onclick="location.reload()">✕ 切断</button>
     <!-- 映像サイズスライダー（VRモード時のみ表示） -->
     <div id="sizeSliderWrap" style="display:none;
-      background:rgba(255,255,255,0.96);
+      background:rgba(0,0,0,0.82);
       backdrop-filter:blur(10px);
-      border:1px solid rgba(138,90,59,0.25);
+      border:1px solid rgba(255,255,255,0.15);
       border-radius:16px;
       padding:10px 16px;
       min-width:180px;">
-      <div style="font-size:12px;color:#382d25;margin-bottom:6px;text-align:center;">
+      <div style="font-size:12px;color:#e8e8f0;margin-bottom:6px;text-align:center;">
         映像サイズ: <span id="sizeLabel">85</span>%
       </div>
       <input type="range" id="sizeSlider" min="20" max="100" value="85"
-        style="width:100%;accent-color:#8a5a3b;"
+        style="width:100%;accent-color:#5b8cff;"
         oninput="onSizeChange(this.value)">
     </div>
     <!-- 傾き調整スライダー（AR/VR共通・常時表示） -->
     <div id="tiltSliderWrap" style="display:none;
-      background:rgba(255,255,255,0.96);
+      background:rgba(0,0,0,0.82);
       backdrop-filter:blur(10px);
-      border:1px solid rgba(138,90,59,0.25);
+      border:1px solid rgba(255,255,255,0.15);
       border-radius:16px;
       padding:10px 16px;
       min-width:180px;">
-      <div style="font-size:12px;color:#382d25;margin-bottom:6px;text-align:center;">
+      <div style="font-size:12px;color:#e8e8f0;margin-bottom:6px;text-align:center;">
         📐 地面との平行: <span id="tiltLabel">0</span>°
       </div>
       <input type="range" id="tiltSlider" min="-45" max="45" value="0"
         step="1"
-        style="width:100%;accent-color:#976a50;"
+        style="width:100%;accent-color:#a78bfa;"
         oninput="onTiltChange(this.value)">
     </div>
   </div>
@@ -496,6 +492,7 @@ let markerLocked = false;
 let markerVisible = false;
 
 const remoteVideo = document.getElementById("remoteVideo");
+const arVideoSrc  = document.getElementById("arVideoSrc"); // A-Frameテクスチャ用
 const arVideo     = document.getElementById("arVideo");
 const arScene     = document.getElementById("arScene");
 const hiroMarker  = document.getElementById("hiroMarker");
@@ -516,87 +513,6 @@ const vrContainer = document.getElementById("vrContainer");
 const vrVideoL    = document.getElementById("vrVideoL");
 const vrVideoR    = document.getElementById("vrVideoR");
 const vrStatus    = document.getElementById("vrStatus");
-
-const remoteAudio = document.getElementById("remoteAudio");
-let playbackRetry = null;
-let playbackAttempt = false;
-function remoteFramesReady() {
-  return remoteVideo.readyState >= 2 && remoteVideo.videoWidth > 0 && !remoteVideo.paused;
-}
-function updatePlaybackStatus() {
-  const ready = remoteFramesReady();
-  const ended = remoteStream && remoteStream.getVideoTracks().every(track => track.readyState === "ended");
-  const text = ended ? "送信映像が停止しました — PC側の配信を確認してください" : ready
-    ? (markerVisible ? "Hiro認識済み — 映像表示中" : "映像受信中 — Hiroマーカーを映してください")
-    : (markerVisible ? "Hiro認識済み — 受信映像を自動再生中..." : "受信映像を自動再生中...");
-  if (remoteStream && selectedMode === "ar") setARStatus(text, ready ? "live" : "");
-}
-function playRemoteVideo() {
-  if (!remoteStream || document.hidden || playbackAttempt) return;
-  remoteVideo.muted = true;
-  playbackAttempt = true;
-  const attempt = remoteVideo.play();
-  if (attempt) attempt.then(() => {
-    refreshARTexture();
-    updatePlaybackStatus();
-  }).catch(updatePlaybackStatus).finally(() => { playbackAttempt = false; });
-  else playbackAttempt = false;
-}
-function attachRemoteStream(stream) {
-  isMuted = true;
-  remoteVideo.defaultMuted = true;
-  remoteVideo.muted = true;
-  remoteVideo.setAttribute("playsinline", "");
-  remoteVideo.style.display = "block";
-  // Video-only playback prevents audio autoplay restrictions from blocking the picture.
-  remoteVideo.srcObject = new MediaStream(stream.getVideoTracks());
-  remoteAudio.srcObject = new MediaStream(stream.getAudioTracks());
-  remoteAudio.muted = true;
-  for (const track of stream.getVideoTracks()) track.addEventListener("unmute", playRemoteVideo);
-  clearInterval(playbackRetry);
-  playbackRetry = setInterval(() => {
-    if (!remoteStream) { clearInterval(playbackRetry); return; }
-    if (!remoteFramesReady()) playRemoteVideo();
-  }, 1000);
-  const audioButton = document.getElementById("muteBtn");
-  if (audioButton) audioButton.textContent = "🔇 音声";
-  playRemoteVideo();
-}
-remoteVideo.addEventListener("loadedmetadata", playRemoteVideo);
-remoteVideo.addEventListener("loadeddata", () => { refreshARTexture(); updatePlaybackStatus(); });
-remoteVideo.addEventListener("playing", () => { refreshARTexture(); updatePlaybackStatus(); });
-remoteVideo.addEventListener("pause", updatePlaybackStatus);
-remoteVideo.addEventListener("waiting", updatePlaybackStatus);
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && remoteStream) playRemoteVideo();
-});
-
-
-// Register before connecting: the marker may already be in view.
-hiroMarker.addEventListener("markerFound", () => {
-  markerVisible = true;
-  updatePlaybackStatus();
-});
-hiroMarker.addEventListener("markerLost", () => {
-  markerVisible = false;
-  updatePlaybackStatus();
-});
-
-function waitForTrackingCamera() {
-  return new Promise((resolve, reject) => {
-    const started = Date.now();
-    function check() {
-      const video = document.getElementById("arjs-video") ||
-        Array.from(document.querySelectorAll("video")).find(v =>
-          v !== remoteVideo && v.id !== "vrCamVideo" && v.srcObject);
-      if (video && video.readyState >= 2 && !video.paused) return resolve(video);
-      if (Date.now() - started > 15000) return reject(new Error("マーカー検出用カメラが起動していません。Safariのカメラ許可を確認して再読み込みしてください。"));
-      setTimeout(check, 100);
-    }
-    check();
-  });
-}
-
 
 
 /* ============================================
@@ -738,7 +654,52 @@ function launchAR(stream) {
 
   setARStatus("映像受信中...", "");
 
-  attachRemoteStream(stream);
+  // iOSはmuted=trueでないと自動再生不可 → 再生後にmuted解除
+  // remoteVideo: 音声再生用
+  remoteVideo.srcObject = stream;
+  remoteVideo.muted = true;
+  remoteVideo.volume = 1.0;
+
+  // arVideoSrc: A-Frameテクスチャ用（同じストリームを流す）
+  arVideoSrc.srcObject = stream;
+  arVideoSrc.muted = true;
+
+  const doPlay = async () => {
+    try {
+      await arVideoSrc.play();
+      await remoteVideo.play();
+      remoteVideo.muted = false; // 音声ON
+      setARStatus("LIVE — Hiroマーカーを映してください", "live");
+      setTimeout(refreshARTexture, 500);
+      setTimeout(refreshARTexture, 1500);
+    } catch(e) {
+      setARStatus("画面をタップして再生", "");
+      document.addEventListener("click", async () => {
+        await arVideoSrc.play();
+        await remoteVideo.play();
+        remoteVideo.muted = false;
+        setARStatus("LIVE — Hiroマーカーを映してください", "live");
+        setTimeout(refreshARTexture, 500);
+        setTimeout(refreshARTexture, 1500);
+      }, { once: true });
+    }
+  };
+
+  if (arVideoSrc.readyState >= 1) {
+    doPlay();
+  } else {
+    arVideoSrc.onloadedmetadata = doPlay;
+  }
+
+  // Marker events
+  hiroMarker.addEventListener("markerFound", () => {
+    markerVisible = true;
+    setARStatus("LIVE — マーカー認識中 📍", "live");
+  });
+  hiroMarker.addEventListener("markerLost", () => {
+    markerVisible = false;
+    setARStatus("LIVE — Hiroマーカーを映してください", "live");
+  });
 
   // A-Frameシーンの初期化完了を待ってからマーカーロック開始
   if (arScene.hasLoaded) {
@@ -762,8 +723,8 @@ function startStableMarkerLock() {
   document.getElementById("tiltSliderWrap").style.display = "block";
 
   function update() {
-    if (markerVisible && remoteFramesReady()) {
-      // Only show the plane when decoded video frames exist.
+    if (markerVisible) {
+      // マーカーが見えている → 映像を表示
       arVideo.setAttribute("visible", "true");
       // 傾き調整
       const baseRot = -90;
@@ -823,17 +784,28 @@ async function launchVR(rStream) {
   const ctxR       = canvasR.getContext("2d");
 
   // ---- 受信映像（相手）再生 ----
-  attachRemoteStream(rStream);
+  remoteVideo.srcObject = rStream;
+  remoteVideo.muted = true;
+  remoteVideo.play().then(() => { remoteVideo.muted = false; }).catch(() => {});
 
-  // Use the same camera frames for tracking and the VR background.
-  // A second getUserMedia call can interrupt tracking on iOS.
-  let trackingVideo;
+  // ---- 自分の手元: 背面カメラ取得 ----
+  let camStream;
   try {
-    trackingVideo = await waitForTrackingCamera();
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { exact: "environment" },
+               width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
   } catch(e) {
-    vrStatusEl.textContent = e.message;
-    return;
+    try {
+      camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    } catch(e2) {
+      vrStatusEl.textContent = "カメラ取得失敗: " + e2.message;
+      return;
+    }
   }
+  vrCamVideo.srcObject = camStream;
+  await vrCamVideo.play();
 
   // A-Frameシーンは透明で残してマーカー検出を継続
   arScene.style.opacity = "0";
@@ -843,7 +815,7 @@ async function launchVR(rStream) {
   document.getElementById("tiltSliderWrap").style.display = "block";
 
   // ---- 状態管理 ----
-  let markerDetected = markerVisible;
+  let markerDetected = false;
   let livePos = null;
 
   hiroMarker.addEventListener("markerFound", () => {
@@ -899,11 +871,11 @@ async function launchVR(rStream) {
   // ---- 1目分の描画 ----
   function drawEye(ctx, W, H) {
     // 背景: 自分の手元（背面カメラ）をフル表示
-    if (trackingVideo.readyState >= 2) {
-      const vw = trackingVideo.videoWidth  || W;
-      const vh = trackingVideo.videoHeight || H;
+    if (vrCamVideo.readyState >= 2) {
+      const vw = vrCamVideo.videoWidth  || W;
+      const vh = vrCamVideo.videoHeight || H;
       const sc = Math.max(W / vw, H / vh);
-      ctx.drawImage(trackingVideo,
+      ctx.drawImage(vrCamVideo,
         (W - vw * sc) / 2, (H - vh * sc) / 2,
         vw * sc, vh * sc);
     } else {
@@ -912,7 +884,7 @@ async function launchVR(rStream) {
     }
 
     // 相手の映像: マーカー検出中のみ、固定角度でリアルタイム位置に表示
-    if (livePos && remoteFramesReady()) {
+    if (livePos && remoteVideo.readyState >= 2) {
       const { cx, cy, rw, rh } = livePos;
       ctx.save();
       ctx.translate(cx, cy);
@@ -956,7 +928,6 @@ async function launchVR(rStream) {
    ============================================ */
 function switchToVR() {
   if (!remoteStream) return;
-  selectedMode = "vr";
   arUI.style.display = "none";
   launchVR(remoteStream);
 }
@@ -1022,8 +993,7 @@ function showTiltSlider() {
    ============================================ */
 function toggleMute() {
   isMuted = !isMuted;
-  remoteAudio.muted = isMuted;
-  if (!isMuted) remoteAudio.play().catch(() => { isMuted = true; remoteAudio.muted = true; const b = document.getElementById("muteBtn"); if (b) b.textContent = "🔇 音声"; });
+  remoteVideo.muted = isMuted;
   const btn = document.getElementById("muteBtn");
   if (btn) btn.textContent = isMuted ? "🔇 音声" : "🔊 音声";
 }
@@ -1033,22 +1003,11 @@ function toggleMute() {
    AR TEXTURE REFRESH
    ============================================ */
 function refreshARTexture() {
-  if (!arVideo || remoteVideo.readyState < 2) return;
-  const mesh = arVideo.getObject3D("mesh");
-  if (!mesh) {
-    arVideo.addEventListener("object3dset", refreshARTexture, { once: true });
-    return;
-  }
-  const THREE = AFRAME.THREE;
-  if (!refreshARTexture.texture) {
-    refreshARTexture.texture = new THREE.VideoTexture(remoteVideo);
-    refreshARTexture.texture.colorSpace = THREE.SRGBColorSpace;
-    refreshARTexture.texture.minFilter = THREE.LinearFilter;
-    refreshARTexture.texture.magFilter = THREE.LinearFilter;
-  }
-  mesh.material.map = refreshARTexture.texture;
-  mesh.material.color.set(0xffffff);
-  mesh.material.needsUpdate = true;
+  if (!arVideo) return;
+  arVideo.setAttribute("src", "");
+  setTimeout(() => {
+    arVideo.setAttribute("src", "#arVideoSrc");
+  }, 100);
 }
 
 </script>
