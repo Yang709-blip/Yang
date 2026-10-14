@@ -270,10 +270,16 @@
     /* ======= REMOTE VIDEO (hidden, used as texture) ======= */
     #remoteVideo {
       position: fixed;
-      width: 1px; height: 1px;
-      opacity: 0;
+      width: 112px; height: 63px;
+      object-fit: contain;
+      background: #382d25;
+      border: 1px solid #e8ddce;
+      border-radius: 8px;
       pointer-events: none;
-      top: -100px;
+      left: 12px;
+      bottom: max(12px, env(safe-area-inset-bottom));
+      z-index: 99998;
+      display: none;
     }
 
     /* ======= VR SPLIT VIEW ======= */
@@ -358,6 +364,7 @@
      REMOTE VIDEO (AR texture source)
      =========================== -->
 <video id="remoteVideo" autoplay muted playsinline webkit-playsinline></video>
+<button id="playRemoteBtn" type="button" style="display:none;position:fixed;left:12px;bottom:max(86px,calc(env(safe-area-inset-bottom) + 86px));z-index:100000;background:#8a5a3b;color:white;border:0;border-radius:8px;padding:12px 18px;font:inherit;cursor:pointer;" onclick="playRemoteVideo()">▶ 受信映像を再生</button>
 
 
 <!-- ===========================
@@ -510,16 +517,60 @@ const vrVideoL    = document.getElementById("vrVideoL");
 const vrVideoR    = document.getElementById("vrVideoR");
 const vrStatus    = document.getElementById("vrStatus");
 
+const playRemoteBtn = document.getElementById("playRemoteBtn");
+function remoteFramesReady() {
+  return remoteVideo.readyState >= 2 && remoteVideo.videoWidth > 0 && !remoteVideo.paused;
+}
+function updatePlaybackStatus() {
+  const ready = remoteFramesReady();
+  playRemoteBtn.style.display = ready || !remoteStream ? "none" : "block";
+  const text = ready
+    ? (markerVisible ? "Hiro認識済み — 映像表示中" : "映像受信中 — Hiroマーカーを映してください")
+    : (markerVisible ? "Hiro認識済み —『受信映像を再生』を押してください" : "受信映像の再生待ち — 再生ボタンを押してください");
+  if (remoteStream && selectedMode === "ar") setARStatus(text, ready ? "live" : "");
+}
+function playRemoteVideo() {
+  // Call play directly, including from a tap; do not wait for loadedmetadata.
+  remoteVideo.muted = isMuted;
+  const attempt = remoteVideo.play();
+  if (attempt) attempt.then(() => {
+    refreshARTexture();
+    updatePlaybackStatus();
+  }).catch(() => {
+    playRemoteBtn.style.display = "block";
+    updatePlaybackStatus();
+  });
+}
+function attachRemoteStream(stream) {
+  isMuted = true;
+  remoteVideo.defaultMuted = true;
+  remoteVideo.muted = true;
+  remoteVideo.setAttribute("playsinline", "");
+  remoteVideo.style.display = "block";
+  remoteVideo.srcObject = stream;
+  playRemoteBtn.style.display = "block";
+  const audioButton = document.getElementById("muteBtn");
+  if (audioButton) audioButton.textContent = "🔇 音声";
+  playRemoteVideo();
+}
+remoteVideo.addEventListener("loadedmetadata", playRemoteVideo);
+remoteVideo.addEventListener("loadeddata", () => { refreshARTexture(); updatePlaybackStatus(); });
+remoteVideo.addEventListener("playing", () => { refreshARTexture(); updatePlaybackStatus(); });
+remoteVideo.addEventListener("pause", updatePlaybackStatus);
+remoteVideo.addEventListener("waiting", updatePlaybackStatus);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && remoteStream) playRemoteVideo();
+});
+
+
 // Register before connecting: the marker may already be in view.
 hiroMarker.addEventListener("markerFound", () => {
   markerVisible = true;
-  if (remoteStream && selectedMode === "ar") {
-    setARStatus("Hiro認識済み — " + (remoteVideo.readyState >= 2 && !remoteVideo.paused ? "映像表示中" : "映像の再生待ち"), "live");
-  }
+  updatePlaybackStatus();
 });
 hiroMarker.addEventListener("markerLost", () => {
   markerVisible = false;
-  if (remoteStream && selectedMode === "ar") setARStatus("映像受信中 — Hiroマーカーを映してください", "");
+  updatePlaybackStatus();
 });
 
 function waitForTrackingCamera() {
@@ -678,36 +729,7 @@ function launchAR(stream) {
 
   setARStatus("映像受信中...", "");
 
-  isMuted = true;
-  // iOSはmuted=trueでないと自動再生不可 → 再生後にmuted解除
-  remoteVideo.srcObject = stream;
-  remoteVideo.muted = true;
-  remoteVideo.volume = 1.0;
-
-  const doPlay = async () => {
-    try {
-      await remoteVideo.play();
-      // Keep muted on Safari; audio is enabled explicitly with the audio button.
-      setARStatus(markerVisible ? "Hiro認識済み — 映像表示中" : "映像受信中 — Hiroマーカーを映してください", "live");
-      setTimeout(refreshARTexture, 300);
-      setTimeout(refreshARTexture, 1000);
-    } catch(e) {
-      setARStatus("画面をタップして再生", "");
-      document.addEventListener("click", async () => {
-        remoteVideo.muted = true;
-        await remoteVideo.play();
-        setARStatus(markerVisible ? "Hiro認識済み — 映像表示中" : "映像受信中 — Hiroマーカーを映してください", "live");
-        setTimeout(refreshARTexture, 300);
-        setTimeout(refreshARTexture, 1000);
-      }, { once: true });
-    }
-  };
-
-  if (remoteVideo.readyState >= 1) {
-    doPlay();
-  } else {
-    remoteVideo.onloadedmetadata = doPlay;
-  }
+  attachRemoteStream(stream);
 
   // A-Frameシーンの初期化完了を待ってからマーカーロック開始
   if (arScene.hasLoaded) {
@@ -731,8 +753,8 @@ function startStableMarkerLock() {
   document.getElementById("tiltSliderWrap").style.display = "block";
 
   function update() {
-    if (markerVisible) {
-      // マーカーが見えている → 映像を表示
+    if (markerVisible && remoteFramesReady()) {
+      // Only show the plane when decoded video frames exist.
       arVideo.setAttribute("visible", "true");
       // 傾き調整
       const baseRot = -90;
@@ -792,13 +814,7 @@ async function launchVR(rStream) {
   const ctxR       = canvasR.getContext("2d");
 
   // ---- 受信映像（相手）再生 ----
-  remoteVideo.srcObject = rStream;
-  remoteVideo.muted = true;
-  isMuted = true;
-  try { await remoteVideo.play(); } catch(e) {
-    vrStatusEl.textContent = "画面をタップして受信映像を再生";
-    document.addEventListener("click", () => remoteVideo.play().catch(() => {}), { once: true });
-  }
+  attachRemoteStream(rStream);
 
   // Use the same camera frames for tracking and the VR background.
   // A second getUserMedia call can interrupt tracking on iOS.
@@ -887,7 +903,7 @@ async function launchVR(rStream) {
     }
 
     // 相手の映像: マーカー検出中のみ、固定角度でリアルタイム位置に表示
-    if (livePos && remoteVideo.readyState >= 2) {
+    if (livePos && remoteFramesReady()) {
       const { cx, cy, rw, rh } = livePos;
       ctx.save();
       ctx.translate(cx, cy);
@@ -931,6 +947,7 @@ async function launchVR(rStream) {
    ============================================ */
 function switchToVR() {
   if (!remoteStream) return;
+  selectedMode = "vr";
   arUI.style.display = "none";
   launchVR(remoteStream);
 }
