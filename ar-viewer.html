@@ -357,9 +357,6 @@
 <!-- ===========================
      REMOTE VIDEO (AR texture source)
      =========================== -->
-<video id="remoteVideo" autoplay muted playsinline webkit-playsinline></video>
-
-
 <!-- ===========================
      AR SCENE
      =========================== -->
@@ -370,10 +367,12 @@
   renderer="logarithmicDepthBuffer: true; antialias: true;"
   arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;">
 
-  <!-- remoteVideoをA-Frameアセットとして登録 -->
+  <!-- remoteVideoをa-assets内に置くことでA-Frameがテクスチャとして認識する -->
   <a-assets>
-    <video id="arVideoSrc" autoplay muted playsinline webkit-playsinline
-      style="display:none"></video>
+    <video id="remoteVideo"
+      autoplay muted playsinline webkit-playsinline
+      crossorigin="anonymous">
+    </video>
   </a-assets>
 
   <a-marker
@@ -386,7 +385,7 @@
 
     <a-video
       id="arVideo"
-      src="#arVideoSrc"
+      src="#remoteVideo"
       position="0 0.05 0"
       rotation="-90 0 0"
       width="3.2"
@@ -492,7 +491,7 @@ let markerLocked = false;
 let markerVisible = false;
 
 const remoteVideo = document.getElementById("remoteVideo");
-const arVideoSrc  = document.getElementById("arVideoSrc"); // A-Frameテクスチャ用
+const remoteVideo  = document.getElementById("remoteVideo"); // A-Frameテクスチャ用
 const arVideo     = document.getElementById("arVideo");
 const arScene     = document.getElementById("arScene");
 const hiroMarker  = document.getElementById("hiroMarker");
@@ -655,29 +654,22 @@ function launchAR(stream) {
   setARStatus("映像受信中...", "");
 
   // iOSはmuted=trueでないと自動再生不可 → 再生後にmuted解除
-  // remoteVideo: 音声再生用
   remoteVideo.srcObject = stream;
   remoteVideo.muted = true;
   remoteVideo.volume = 1.0;
 
-  // arVideoSrc: A-Frameテクスチャ用（同じストリームを流す）
-  arVideoSrc.srcObject = stream;
-  arVideoSrc.muted = true;
-
   const doPlay = async () => {
     try {
-      await arVideoSrc.play();
       await remoteVideo.play();
-      remoteVideo.muted = false; // 音声ON
+      remoteVideo.muted = false; // 再生成功後に音声ON
       setARStatus("LIVE — Hiroマーカーを映してください", "live");
       setTimeout(refreshARTexture, 500);
       setTimeout(refreshARTexture, 1500);
     } catch(e) {
       setARStatus("画面をタップして再生", "");
       document.addEventListener("click", async () => {
-        await arVideoSrc.play();
-        await remoteVideo.play();
         remoteVideo.muted = false;
+        await remoteVideo.play();
         setARStatus("LIVE — Hiroマーカーを映してください", "live");
         setTimeout(refreshARTexture, 500);
         setTimeout(refreshARTexture, 1500);
@@ -685,10 +677,10 @@ function launchAR(stream) {
     }
   };
 
-  if (arVideoSrc.readyState >= 1) {
+  if (remoteVideo.readyState >= 1) {
     doPlay();
   } else {
-    arVideoSrc.onloadedmetadata = doPlay;
+    remoteVideo.onloadedmetadata = doPlay;
   }
 
   // Marker events
@@ -1006,7 +998,7 @@ function refreshARTexture() {
   if (!arVideo) return;
   arVideo.setAttribute("src", "");
   setTimeout(() => {
-    arVideo.setAttribute("src", "#arVideoSrc");
+    arVideo.setAttribute("src", "#remoteVideo");
   }, 100);
 }
 
