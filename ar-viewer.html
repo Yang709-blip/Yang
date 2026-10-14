@@ -364,7 +364,7 @@
      REMOTE VIDEO (AR texture source)
      =========================== -->
 <video id="remoteVideo" autoplay muted playsinline webkit-playsinline></video>
-<button id="playRemoteBtn" type="button" style="display:none;position:fixed;left:12px;bottom:max(86px,calc(env(safe-area-inset-bottom) + 86px));z-index:100000;background:#8a5a3b;color:white;border:0;border-radius:8px;padding:12px 18px;font:inherit;cursor:pointer;" onclick="playRemoteVideo()">▶ 受信映像を再生</button>
+<audio id="remoteAudio" playsinline></audio>
 
 
 <!-- ===========================
@@ -517,29 +517,30 @@ const vrVideoL    = document.getElementById("vrVideoL");
 const vrVideoR    = document.getElementById("vrVideoR");
 const vrStatus    = document.getElementById("vrStatus");
 
-const playRemoteBtn = document.getElementById("playRemoteBtn");
+const remoteAudio = document.getElementById("remoteAudio");
+let playbackRetry = null;
+let playbackAttempt = false;
 function remoteFramesReady() {
   return remoteVideo.readyState >= 2 && remoteVideo.videoWidth > 0 && !remoteVideo.paused;
 }
 function updatePlaybackStatus() {
   const ready = remoteFramesReady();
-  playRemoteBtn.style.display = ready || !remoteStream ? "none" : "block";
-  const text = ready
+  const ended = remoteStream && remoteStream.getVideoTracks().every(track => track.readyState === "ended");
+  const text = ended ? "送信映像が停止しました — PC側の配信を確認してください" : ready
     ? (markerVisible ? "Hiro認識済み — 映像表示中" : "映像受信中 — Hiroマーカーを映してください")
-    : (markerVisible ? "Hiro認識済み —『受信映像を再生』を押してください" : "受信映像の再生待ち — 再生ボタンを押してください");
+    : (markerVisible ? "Hiro認識済み — 受信映像を自動再生中..." : "受信映像を自動再生中...");
   if (remoteStream && selectedMode === "ar") setARStatus(text, ready ? "live" : "");
 }
 function playRemoteVideo() {
-  // Call play directly, including from a tap; do not wait for loadedmetadata.
-  remoteVideo.muted = isMuted;
+  if (!remoteStream || document.hidden || playbackAttempt) return;
+  remoteVideo.muted = true;
+  playbackAttempt = true;
   const attempt = remoteVideo.play();
   if (attempt) attempt.then(() => {
     refreshARTexture();
     updatePlaybackStatus();
-  }).catch(() => {
-    playRemoteBtn.style.display = "block";
-    updatePlaybackStatus();
-  });
+  }).catch(updatePlaybackStatus).finally(() => { playbackAttempt = false; });
+  else playbackAttempt = false;
 }
 function attachRemoteStream(stream) {
   isMuted = true;
@@ -547,8 +548,16 @@ function attachRemoteStream(stream) {
   remoteVideo.muted = true;
   remoteVideo.setAttribute("playsinline", "");
   remoteVideo.style.display = "block";
-  remoteVideo.srcObject = stream;
-  playRemoteBtn.style.display = "block";
+  // Video-only playback prevents audio autoplay restrictions from blocking the picture.
+  remoteVideo.srcObject = new MediaStream(stream.getVideoTracks());
+  remoteAudio.srcObject = new MediaStream(stream.getAudioTracks());
+  remoteAudio.muted = true;
+  for (const track of stream.getVideoTracks()) track.addEventListener("unmute", playRemoteVideo);
+  clearInterval(playbackRetry);
+  playbackRetry = setInterval(() => {
+    if (!remoteStream) { clearInterval(playbackRetry); return; }
+    if (!remoteFramesReady()) playRemoteVideo();
+  }, 1000);
   const audioButton = document.getElementById("muteBtn");
   if (audioButton) audioButton.textContent = "🔇 音声";
   playRemoteVideo();
@@ -1013,7 +1022,8 @@ function showTiltSlider() {
    ============================================ */
 function toggleMute() {
   isMuted = !isMuted;
-  remoteVideo.muted = isMuted;
+  remoteAudio.muted = isMuted;
+  if (!isMuted) remoteAudio.play().catch(() => { isMuted = true; remoteAudio.muted = true; const b = document.getElementById("muteBtn"); if (b) b.textContent = "🔇 音声"; });
   const btn = document.getElementById("muteBtn");
   if (btn) btn.textContent = isMuted ? "🔇 音声" : "🔊 音声";
 }
