@@ -370,18 +370,15 @@
   renderer="logarithmicDepthBuffer: true; antialias: true;"
   arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;">
 
-  <!-- Marker detection only. The video is rendered on the stable anchor below. -->
   <a-marker
     preset="hiro"
     smooth="true"
-    smooth-count="5"
-    smooth-tolerance="0.01"
-    smooth-threshold="2"
+    smooth-count="15"
+    smooth-tolerance="0.005"
+    smooth-threshold="5"
     id="hiroMarker">
-  </a-marker>
 
-  <!-- Keeps the last reliable marker pose when detection is briefly lost. -->
-  <a-entity id="stableAnchor" visible="false">
+    <!-- 映像をマーカー直下に配置 -->
     <a-video
       id="arVideo"
       src="#remoteVideo"
@@ -389,9 +386,14 @@
       rotation="-90 0 0"
       width="3.2"
       height="1.8"
-      material="shader: flat; side: double;">
+      visible="false"
+      material="shader: flat; side: double; depthTest: false;">
     </a-video>
-  </a-entity>
+
+  </a-marker>
+
+  <!-- stableAnchorは互換用に残す（非表示） -->
+  <a-entity id="stableAnchor" visible="false"></a-entity>
 
   <a-entity camera></a-entity>
 </a-scene>
@@ -648,87 +650,78 @@ function launchAR(stream) {
 
   setARStatus("映像受信中...", "");
 
-  // Audio: remoteVideo plays audio
-  // (muted=false after play so iOS allows it via user gesture)
+  // iOSはmuted=trueでないと自動再生不可 → 再生後にmuted解除
   remoteVideo.srcObject = stream;
-  remoteVideo.muted = false;   // audio ON
+  remoteVideo.muted = true;
   remoteVideo.volume = 1.0;
 
-  remoteVideo.onloadedmetadata = async () => {
+  const doPlay = async () => {
     try {
       await remoteVideo.play();
+      remoteVideo.muted = false; // 再生できたら音声ON
       setARStatus("LIVE — Hiroマーカーを映してください", "live");
-      refreshARTexture();
+      setTimeout(refreshARTexture, 300);
+      setTimeout(refreshARTexture, 1000);
     } catch(e) {
-      // iOS autoplay block: show tap to play
       setARStatus("画面をタップして再生", "");
       document.addEventListener("click", async () => {
+        remoteVideo.muted = false;
         await remoteVideo.play();
         setARStatus("LIVE — Hiroマーカーを映してください", "live");
-        refreshARTexture();
+        setTimeout(refreshARTexture, 300);
+        setTimeout(refreshARTexture, 1000);
       }, { once: true });
     }
   };
 
+  if (remoteVideo.readyState >= 1) {
+    doPlay();
+  } else {
+    remoteVideo.onloadedmetadata = doPlay;
+  }
+
   // Marker events
   hiroMarker.addEventListener("markerFound", () => {
     markerVisible = true;
-    setARStatus(markerLocked ? "LIVE — 位置を補正中 📍" : "LIVE — マーカー認識中 📍", "live");
+    setARStatus("LIVE — マーカー認識中 📍", "live");
   });
   hiroMarker.addEventListener("markerLost", () => {
     markerVisible = false;
-    setARStatus(markerLocked ? "LIVE — 最後の位置を保持中" : "LIVE — マーカーを映してください", "live");
+    setARStatus("LIVE — Hiroマーカーを映してください", "live");
   });
 
-  startStableMarkerLock();
+  // A-Frameシーンの初期化完了を待ってからマーカーロック開始
+  if (arScene.hasLoaded) {
+    startStableMarkerLock();
+  } else {
+    arScene.addEventListener("loaded", () => startStableMarkerLock(), { once: true });
+  }
 }
 
 
 /* ============================================
    STABLE MARKER LOCK
-   マーカーが見えている間だけ映像を表示。
-   傾き（tiltAngle）をarVideoのX回転に反映。
+   マーカーが見えている間だけarVideoをvisible=true。
+   傾き（tiltAngle）をX回転に反映。
    ============================================ */
 function startStableMarkerLock() {
   if (startStableMarkerLock.running) return;
   startStableMarkerLock.running = true;
 
-  const targetPosition   = new THREE.Vector3();
-  const targetQuaternion = new THREE.Quaternion();
-  const targetScale      = new THREE.Vector3();
-  const markerObject = hiroMarker.object3D;
-  const anchorObject = stableAnchor.object3D;
-
   // 傾きスライダーをARモードでも表示
   document.getElementById("tiltSliderWrap").style.display = "block";
 
-  let stableFrames = 0;
-
   function update() {
-    if (markerVisible && markerObject.visible) {
-      markerObject.updateMatrixWorld(true);
-      markerObject.matrixWorld.decompose(targetPosition, targetQuaternion, targetScale);
-
-      const lerpFactor = stableFrames < 30 ? 0.5 : 0.06;
-      anchorObject.position.lerp(targetPosition, lerpFactor);
-      anchorObject.quaternion.slerp(targetQuaternion, lerpFactor);
-      anchorObject.scale.lerp(targetScale, lerpFactor);
-      stableFrames = Math.min(stableFrames + 1, 60);
-
-      anchorObject.visible = true;
-      anchorObject.updateMatrixWorld(true);
-
-      // 傾き調整: arVideoのX回転に tiltAngle を加算
-      if (arVideo) {
-        const baseRot = -90; // 机に平置きするための基本回転
-        arVideo.setAttribute("rotation", `${baseRot + tiltAngle} 0 0`);
-      }
+    if (markerVisible) {
+      // マーカーが見えている → 映像を表示
+      arVideo.setAttribute("visible", "true");
+      // 傾き調整
+      const baseRot = -90;
+      arVideo.setAttribute("rotation", `${baseRot + tiltAngle} 0 0`);
     } else {
-      // マーカーが見えなくなったら非表示
-      anchorObject.visible = false;
-      stableFrames = 0;
+      // マーカーが見えない → 映像を非表示
+      arVideo.setAttribute("visible", "false");
     }
-
     requestAnimationFrame(update);
   }
 
