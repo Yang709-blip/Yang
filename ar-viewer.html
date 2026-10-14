@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="AR Connect">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#f5efe5">
+  <meta name="theme-color" content="#fffaf2">
   <link rel="manifest" href="/manifest.webmanifest">
   <title>AR Viewer</title>
 
@@ -22,7 +22,7 @@
 
     body {
       font-family: 'Inter', sans-serif;
-      background: #f5efe5;
+      background: #fffaf2;
       color: #382d25;
       overflow: hidden;
       width: 100vw;
@@ -35,7 +35,7 @@
     #setupScreen {
       position: fixed;
       inset: 0;
-      background: #f5efe5;
+      background: #fffaf2;
       z-index: 9999999;
       display: flex;
       flex-direction: column;
@@ -69,8 +69,8 @@
     .setup-card {
       width: 100%;
       max-width: 400px;
-      background: #fffaf2;
-      border: 1px solid #d9cbbb;
+      background: #ffffff;
+      border: 1px solid #e8ddce;
       border-radius: 14px;
       padding: 24px;
       margin-bottom: 16px;
@@ -85,8 +85,8 @@
 
     input[type="text"] {
       width: 100%;
-      background: #f5efe5;
-      border: 1px solid #d9cbbb;
+      background: #fffaf2;
+      border: 1px solid #e8ddce;
       border-radius: 8px;
       color: #382d25;
       font-family: inherit;
@@ -108,7 +108,7 @@
     .mode-btn {
       flex: 1;
       padding: 12px 8px;
-      border: 1px solid #d9cbbb;
+      border: 1px solid #e8ddce;
       border-radius: 8px;
       background: transparent;
       color: #756453;
@@ -169,7 +169,7 @@
       margin: max(12px, env(safe-area-inset-top)) auto 12px;
       width: fit-content;
       max-width: 90%;
-      background: rgba(255,250,242,0.95);
+      background: rgba(255,255,255,0.95);
       backdrop-filter: blur(8px);
       border: 1px solid rgba(138,90,59,0.2);
       border-radius: 20px;
@@ -237,7 +237,7 @@
     #menuToggleBtn {
       width: 48px; height: 48px;
       border-radius: 50%;
-      background: rgba(255,250,242,0.96);
+      background: rgba(255,255,255,0.96);
       backdrop-filter: blur(10px);
       border: 1px solid rgba(138,90,59,0.3);
       color: #382d25;
@@ -255,7 +255,7 @@
     }
 
     .bar-btn {
-      background: rgba(255,250,242,0.96);
+      background: rgba(255,255,255,0.96);
       backdrop-filter: blur(10px);
       border: 1px solid rgba(138,90,59,0.25);
       border-radius: 24px;
@@ -439,7 +439,7 @@
     <button class="bar-btn" onclick="location.reload()">✕ 切断</button>
     <!-- 映像サイズスライダー（VRモード時のみ表示） -->
     <div id="sizeSliderWrap" style="display:none;
-      background:rgba(255,250,242,0.96);
+      background:rgba(255,255,255,0.96);
       backdrop-filter:blur(10px);
       border:1px solid rgba(138,90,59,0.25);
       border-radius:16px;
@@ -454,7 +454,7 @@
     </div>
     <!-- 傾き調整スライダー（AR/VR共通・常時表示） -->
     <div id="tiltSliderWrap" style="display:none;
-      background:rgba(255,250,242,0.96);
+      background:rgba(255,255,255,0.96);
       backdrop-filter:blur(10px);
       border:1px solid rgba(138,90,59,0.25);
       border-radius:16px;
