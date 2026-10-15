@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AR Sender</title>
-  <meta name="theme-color" content="#fffaf2">
   <script src="https://unpkg.com/peerjs@1.5.5/dist/peerjs.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap');
@@ -12,16 +11,16 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #fffaf2;
+      --bg: #f4f6fb;
       --surface: #ffffff;
-      --border: #e8ddce;
-      --accent: #8a5a3b;
-      --accent2: #976a50;
-      --text: #382d25;
-      --muted: #756453;
-      --green: #24805a;
-      --red: #bd433b;
-      --yellow: #aa720c;
+      --border: #d8e2f0;
+      --accent: #4f8ef7;
+      --accent2: #7c6af7;
+      --text: #1a1a2e;
+      --muted: #6080a0;
+      --green: #22c55e;
+      --red: #ef4444;
+      --yellow: #f59e0b;
     }
 
     body {
@@ -64,6 +63,7 @@
       border-radius: 14px;
       padding: 28px;
       margin-bottom: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
     }
 
     .card-title {
@@ -80,7 +80,7 @@
 
     input[type="text"] {
       flex: 1;
-      background: var(--bg);
+      background: #f4f6fb;
       border: 1px solid var(--border);
       border-radius: 8px;
       color: var(--text);
@@ -92,7 +92,7 @@
       letter-spacing: 0.06em;
     }
 
-    input[type="text"]::placeholder { color: var(--muted); }
+    input[type="text"]::placeholder { color: #a0b4cc; }
     input[type="text"]:focus { border-color: var(--accent); }
 
     button {
@@ -125,7 +125,7 @@
       gap: 10px;
       margin-top: 16px;
       padding: 12px 16px;
-      background: var(--bg);
+      background: #f4f6fb;
       border-radius: 8px;
       border: 1px solid var(--border);
     }
@@ -188,8 +188,8 @@
     .conn-label { color: var(--muted); margin-right: 4px; }
 
     .info-box {
-      background: rgba(138,90,59,0.08);
-      border: 1px solid rgba(138,90,59,0.25);
+      background: rgba(91,140,255,0.08);
+      border: 1px solid rgba(91,140,255,0.25);
       border-radius: 8px;
       padding: 14px 16px;
       font-size: 13px;
@@ -203,7 +203,7 @@
     .log-box {
       font-size: 11px;
       color: var(--muted);
-      background: var(--bg);
+      background: #f4f6fb;
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 12px;
@@ -245,13 +245,13 @@
 <div class="card">
   <div class="card-title">STEP 1 — 合言葉を設定</div>
   <div class="input-row">
-    <input type="text" id="roomInput" placeholder="合言葉を入力（例: cardgame）" maxlength="32">
+    <input type="text" id="roomInput" placeholder="合言葉を入力（例: summer2025）" maxlength="32">
     <button id="startBtn">配信開始</button>
   </div>
 
   <div class="card-title" style="margin-top:18px">使用カメラ</div>
   <select id="cameraSelect" style="
-    width:100%; background:var(--bg); border:1px solid var(--border);
+    width:100%; background:#f4f6fb; border:1px solid var(--border);
     border-radius:8px; color:var(--text); font-family:inherit;
     font-size:14px; padding:12px 14px; outline:none; cursor:pointer;
   ">
@@ -272,6 +272,16 @@
     <span id="statusText">スマホからの接続を待っています...</span>
   </div>
   <video id="localVideo" autoplay muted playsinline></video>
+
+  <!-- カメラプレビューサイズ調整 -->
+  <div style="margin-top:14px;padding:12px 16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;">
+    <div style="font-size:12px;color:var(--muted);margin-bottom:8px;text-align:center;">
+      🔲 プレビューサイズ: <span id="previewSizeLabel">100</span>%
+    </div>
+    <input type="range" id="previewSizeSlider" min="20" max="100" value="100"
+      style="width:100%;accent-color:var(--accent);"
+      oninput="onPreviewSizeChange(this.value)">
+  </div>
 
   <div class="connections-list" id="connectionsList"></div>
 
@@ -325,6 +335,12 @@ const dot = document.getElementById("dot");
 const statusText = document.getElementById("statusText");
 const connectionsList = document.getElementById("connectionsList");
 const logBox = document.getElementById("logBox");
+
+function onPreviewSizeChange(val) {
+  document.getElementById("previewSizeLabel").textContent = val;
+  const video = document.getElementById("localVideo");
+  video.style.width = val + "%";
+}
 
 function log(msg) {
   const t = new Date().toLocaleTimeString("ja-JP", { hour12: false });
