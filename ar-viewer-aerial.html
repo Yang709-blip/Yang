@@ -913,13 +913,25 @@ async function launchVR(rStream) {
 
   /* ================================================
      映像表示判定
+     ・固定前: 常時表示（位置確認用）
+     ・固定後: ジャイロで角度内のみ表示
      ================================================ */
   function shouldShowVideo() {
-    if (lockedBeta === null) return false;
-    if (!gyroReady) return false;
+    if (!remoteVideo || remoteVideo.readyState < 2) return false;
+    // 固定前は常時表示
+    if (lockedBeta === null) return true;
+    // 固定後はジャイロ判定
+    if (!gyroReady) return true; // ジャイロ未取得時も表示
     const diff = Math.abs(currentBeta - lockedBeta);
-    // 角度差がSHOW_RANGE度以内なら表示
     return diff <= SHOW_RANGE;
+  }
+
+  // 固定前のアルファ値（常時1.0）、固定後はフェード
+  function getVideoAlpha() {
+    if (lockedBeta === null) return 1.0;
+    if (!gyroReady) return 1.0;
+    const diff = Math.abs(currentBeta - lockedBeta);
+    return Math.max(0, Math.min(1, 1 - (diff - SHOW_RANGE * 0.6) / (SHOW_RANGE * 0.4)));
   }
 
   /* ================================================
@@ -951,36 +963,64 @@ async function launchVR(rStream) {
       ctx.fillRect(0, 0, W, H);
     }
 
-    // 相手の映像: 正面を向いている時だけ画面中央上部に表示
-    if (shouldShowVideo() && remoteVideo.readyState >= 2) {
-      const rw = W * vrVideoSize;
-      const rh = rw * (9 / 16);
-      const cx = W / 2;
-      // 画面の上から35%の位置に中心を置く
-      const cy = H * 0.35;
+    const rw = W * vrVideoSize;
+    const rh = rw * (9 / 16);
+    const cx = W / 2;
+    const cy = H * 0.35; // 画面上部35%に固定
 
-      // フェードイン・アウト用の透明度計算
-      const diff = Math.abs(currentBeta - lockedBeta);
-      const alpha = Math.max(0, Math.min(1, 1 - (diff - SHOW_RANGE * 0.6) / (SHOW_RANGE * 0.4)));
-
+    // 映像表示
+    if (shouldShowVideo()) {
+      const alpha = getVideoAlpha();
       ctx.save();
       ctx.globalAlpha = alpha;
-      // 薄い影
-      ctx.shadowColor = "rgba(0,0,0,0.5)";
-      ctx.shadowBlur = 20;
-      ctx.fillStyle = "rgba(0,0,0,0.15)";
-      ctx.fillRect(cx - rw/2 - 4, cy - rh/2 - 4, rw + 8, rh + 8);
+
+      // 影
+      ctx.shadowColor = "rgba(0,0,0,0.4)";
+      ctx.shadowBlur = 16;
+
+      // 固定前: 枠線でガイドを表示
+      if (lockedBeta === null) {
+        // 点滅する枠線（固定位置のガイド）
+        const blinkOn = Math.floor(Date.now() / 500) % 2 === 0;
+        ctx.strokeStyle = blinkOn ? "rgba(79,142,247,0.9)" : "rgba(79,142,247,0.3)";
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 4]);
+        ctx.strokeRect(cx - rw/2 - 6, cy - rh/2 - 6, rw + 12, rh + 12);
+        ctx.setLineDash([]);
+
+        // 「ここに固定されます」ラベル
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = blinkOn ? "rgba(79,142,247,0.95)" : "rgba(79,142,247,0.5)";
+        const fs = Math.max(10, Math.floor(W * 0.03));
+        ctx.font = `bold ${fs}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.fillText("▼ ここに固定されます", cx, cy - rh/2 - 14);
+        ctx.textAlign = "left";
+      }
+
       ctx.shadowBlur = 0;
       ctx.drawImage(remoteVideo, cx - rw/2, cy - rh/2, rw, rh);
+
+      // 固定後: 固定済みバッジ
+      if (lockedBeta !== null && alpha > 0.5) {
+        ctx.fillStyle = "rgba(34,197,94,0.85)";
+        ctx.beginPath();
+        ctx.roundRect(cx - rw/2, cy - rh/2 - 22, 70, 18, 4);
+        ctx.fill();
+        ctx.fillStyle = "white";
+        ctx.font = `bold ${Math.max(9, Math.floor(W*0.025))}px sans-serif`;
+        ctx.fillText("🔒 固定中", cx - rw/2 + 6, cy - rh/2 - 8);
+      }
+
       ctx.restore();
     }
 
-    // 未固定時のガイド
+    // 固定前ガイドテキスト（画面下部）
     if (lockedBeta === null) {
-      ctx.fillStyle = "rgba(255,255,255,0.6)";
-      ctx.font = `${Math.max(11, Math.floor(W * 0.032))}px sans-serif`;
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.font = `${Math.max(10, Math.floor(W * 0.03))}px sans-serif`;
       ctx.textAlign = "center";
-      ctx.fillText("正面を向いて ☰ →「空中に固定」を押してください", W/2, H * 0.88);
+      ctx.fillText("☰ →「📍 空中に固定」で位置を確定", W/2, H * 0.92);
       ctx.textAlign = "left";
     }
   }
