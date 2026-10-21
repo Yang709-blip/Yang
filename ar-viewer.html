@@ -9,7 +9,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#000000">
   <link rel="manifest" href="/manifest.webmanifest">
-  <title>AR Viewer</title>
+  <title>AR Connect Viewer</title>
 
   <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.7/aframe/build/aframe-ar.js"></script>
@@ -345,10 +345,13 @@
     <div class="setup-label" style="margin-top:4px">表示モード</div>
     <div class="mode-row">
       <div class="mode-btn active" data-mode="ar" onclick="selectMode('ar',this)">
-        📷 ARモード<br><span style="font-size:11px;color:inherit;opacity:0.7">マーカーに重ねて表示</span>
+        📷 AR<br><span style="font-size:10px;color:inherit;opacity:0.7">マーカーに重ねる</span>
       </div>
       <div class="mode-btn" data-mode="vr" onclick="selectMode('vr',this)">
-        🥽 VRモード<br><span style="font-size:11px;color:inherit;opacity:0.7">ゴーグル二眼表示</span>
+        🥽 VR<br><span style="font-size:10px;color:inherit;opacity:0.7">ゴーグル二眼</span>
+      </div>
+      <div class="mode-btn" data-mode="aerial" onclick="selectMode('aerial',this)">
+        🌐 空中投影<br><span style="font-size:10px;color:inherit;opacity:0.7">ジャイロで固定</span>
       </div>
     </div>
 
@@ -356,6 +359,9 @@
     <div id="setupStatus"></div>
   </div>
   <p class="fullscreen-note fullscreen-only-note">iPhoneはSafariの共有ボタンから「ホーム画面に追加」し、追加したアイコンから開くとURLバーなしで表示できます。</p>
+  <p style="max-width:400px;font-size:11px;color:#7090b0;text-align:center;line-height:1.6;margin-top:8px;">
+    🌐 空中投影モードを使う場合：iOS設定 → Safari → 「モーションと向きへのアクセス」をオン
+  </p>
 </div>
 
 
@@ -563,8 +569,27 @@ function startConnect() {
       iceServers: [
         { urls: "stun:stun.l.google.com:19302" },
         { urls: "stun:stun1.l.google.com:19302" },
-        { urls: "stun:stun2.l.google.com:19302" },
-        { urls: "stun:stun.cloudflare.com:3478" }
+        { urls: "stun:stun.cloudflare.com:3478" },
+        {
+          urls: "turn:standard.relay.metered.ca:80",
+          username: "openrelayproject",
+          credential: "openrelayproject"
+        },
+        {
+          urls: "turn:standard.relay.metered.ca:80?transport=tcp",
+          username: "openrelayproject",
+          credential: "openrelayproject"
+        },
+        {
+          urls: "turn:standard.relay.metered.ca:443",
+          username: "openrelayproject",
+          credential: "openrelayproject"
+        },
+        {
+          urls: "turns:standard.relay.metered.ca:443?transport=tcp",
+          username: "openrelayproject",
+          credential: "openrelayproject"
+        }
       ]
     }
   };
@@ -622,20 +647,18 @@ function startConnect() {
 
     call.on("stream", stream => {
       remoteStream = stream;
-
-      // --- AR MODE ---
       if (selectedMode === "ar") {
         launchAR(stream);
-      }
-      // --- VR MODE ---
-      else {
+      } else if (selectedMode === "aerial") {
+        launchAerial(stream);
+      } else {
         launchVR(stream);
       }
     });
 
     call.on("close", () => {
       if (selectedMode === "ar") setARStatus("接続切断", "error");
-      else vrStatus.textContent = "接続切断";
+      else document.getElementById("vrStatus").textContent = "接続切断";
     });
 
     call.on("error", e => {
@@ -767,10 +790,11 @@ async function enterFullscreen(showHelp) {
 
 
 /* ============================================
-   LAUNCH VR
+   LAUNCH VR（ジャイロスコープによる空中投影）
    ・背面カメラ映像を左右Canvasにパススルー表示
-   ・AR.jsのmarkerFound/Lostイベントで
-     マーカー検出中のみ受信映像を中央に重ねる
+   ・「固定」ボタン押下時のピッチ角を記録
+   ・正面を向いている間だけ映像を表示
+   ・下を向くと映像が消え手元が見える
    ============================================ */
 async function launchVR(rStream) {
   setupScreen.style.display = "none";
@@ -790,7 +814,7 @@ async function launchVR(rStream) {
   remoteVideo.muted = true;
   remoteVideo.play().then(() => { remoteVideo.muted = false; }).catch(() => {});
 
-  // ---- 自分の手元: 背面カメラ取得 ----
+  // ---- 背面カメラ取得 ----
   let camStream;
   try {
     camStream = await navigator.mediaDevices.getUserMedia({
@@ -799,42 +823,124 @@ async function launchVR(rStream) {
       audio: false
     });
   } catch(e) {
-    try {
-      camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-    } catch(e2) {
-      vrStatusEl.textContent = "カメラ取得失敗: " + e2.message;
-      return;
-    }
+    try { camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); }
+    catch(e2) { vrStatusEl.textContent = "カメラ取得失敗: " + e2.message; return; }
   }
   vrCamVideo.srcObject = camStream;
   await vrCamVideo.play();
 
-  // A-Frameシーンは透明で残してマーカー検出を継続
-  arScene.style.opacity = "0";
-  arScene.style.pointerEvents = "none";
+  // A-Frameは非表示（マーカー不使用）
+  arScene.style.display = "none";
 
-  // 傾きスライダーをVRモードでも表示
-  document.getElementById("tiltSliderWrap").style.display = "block";
+  // スライダー表示
+  document.getElementById("sizeSliderWrap").style.display = "block";
+  document.getElementById("tiltSliderWrap").style.display = "none"; // VRではジャイロを使うので傾きスライダー不要
 
-  // ---- 状態管理 ----
-  let markerDetected = false;
-  let livePos = null;
+  /* ================================================
+     ジャイロスコープ管理
+     ================================================ */
+  let currentBeta  = 0; // 上下の傾き角（-180〜180）
+  let lockedBeta   = null; // 固定時のbeta角
+  let gyroReady    = false;
+  // 映像を表示する角度の許容幅（度）
+  // この範囲内に入ると映像が表示される
+  const SHOW_RANGE = 25;
 
-  hiroMarker.addEventListener("markerFound", () => {
-    markerDetected = true;
+  function onOrientation(e) {
+    // beta: 端末の前後傾き
+    // 横向き（landscape）時はgammaを使う
+    const isLandscape = window.innerWidth > window.innerHeight;
+    currentBeta = isLandscape
+      ? (e.gamma !== null ? e.gamma : e.beta)
+      : (e.beta  !== null ? e.beta  : 0);
+    gyroReady = true;
+  }
+
+  // iOS13+はユーザー許可が必要
+  async function requestGyro() {
+    if (typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function") {
+      try {
+        const perm = await DeviceOrientationEvent.requestPermission();
+        if (perm === "granted") {
+          window.addEventListener("deviceorientation", onOrientation);
+          return true;
+        } else {
+          vrStatusEl.textContent = "ジャイロの許可が必要です";
+          return false;
+        }
+      } catch(e) {
+        vrStatusEl.textContent = "ジャイロエラー: " + e.message;
+        return false;
+      }
+    } else {
+      // Android・非iOS
+      window.addEventListener("deviceorientation", onOrientation);
+      return true;
+    }
+  }
+
+  /* ================================================
+     「位置を固定」ボタンをメニューに追加
+     ================================================ */
+  const lockBtn = document.createElement("button");
+  lockBtn.className = "bar-btn";
+  lockBtn.textContent = "📍 空中に固定";
+  lockBtn.style.background = "rgba(79,142,247,0.15)";
+  lockBtn.style.border = "1px solid #4f8ef7";
+  lockBtn.style.color = "#4f8ef7";
+  lockBtn.style.fontWeight = "600";
+  menuItems.insertBefore(lockBtn, menuItems.firstChild);
+
+  const resetBtn = document.createElement("button");
+  resetBtn.className = "bar-btn";
+  resetBtn.textContent = "🔓 固定解除";
+  resetBtn.style.display = "none";
+  menuItems.insertBefore(resetBtn, lockBtn.nextSibling);
+
+  lockBtn.addEventListener("click", async () => {
+    if (!gyroReady) {
+      const ok = await requestGyro();
+      if (!ok) return;
+      // 少し待ってから角度を取得
+      await new Promise(r => setTimeout(r, 500));
+    }
+    lockedBeta = currentBeta;
+    lockBtn.style.display = "none";
+    resetBtn.style.display = "block";
     vrStatusEl.style.display = "block";
-    vrStatusEl.textContent = "📍 マーカー認識中";
-    setTimeout(() => { vrStatusEl.style.display = "none"; }, 1000);
+    vrStatusEl.textContent = "🔒 空中に固定しました — 下を向くと映像が消えます";
+    setTimeout(() => { vrStatusEl.style.display = "none"; }, 3000);
   });
 
-  hiroMarker.addEventListener("markerLost", () => {
-    markerDetected = false;
-    livePos = null; // マーカーが消えたら映像も消える
+  resetBtn.addEventListener("click", () => {
+    lockedBeta = null;
+    resetBtn.style.display = "none";
+    lockBtn.style.display = "block";
+    vrStatusEl.style.display = "block";
+    vrStatusEl.textContent = "正面を向いて「空中に固定」を押してください";
+    setTimeout(() => { vrStatusEl.style.display = "none"; }, 3000);
   });
 
-  vrStatusEl.textContent = "LIVE 🟢 — Hiroマーカーを机に置いて映してください";
+  // ジャイロを先に起動しておく（Androidは許可不要）
+  requestGyro();
 
-  // ---- Canvas リサイズ ----
+  vrStatusEl.textContent = "正面を向いて ☰ → 「📍 空中に固定」を押してください";
+
+  /* ================================================
+     映像表示判定
+     ================================================ */
+  function shouldShowVideo() {
+    if (lockedBeta === null) return false;
+    if (!gyroReady) return false;
+    const diff = Math.abs(currentBeta - lockedBeta);
+    // 角度差がSHOW_RANGE度以内なら表示
+    return diff <= SHOW_RANGE;
+  }
+
+  /* ================================================
+     Canvas リサイズ
+     ================================================ */
   function resize() {
     const eyeW = Math.floor(window.innerWidth / 2);
     const eyeH = window.innerHeight;
@@ -844,33 +950,9 @@ async function launchVR(rStream) {
   resize();
   window.addEventListener("resize", resize);
 
-  // ---- マーカー位置をフレームごとに取得（角度だけ固定）----
-  function updateLivePos(W, H) {
-    if (!markerDetected) { livePos = null; return; }
-
-    const cam = arScene.camera;
-    if (!cam) return;
-
-    const markerObj = hiroMarker.object3D;
-    markerObj.updateMatrixWorld(true);
-
-    const wPos = new THREE.Vector3();
-    markerObj.getWorldPosition(wPos);
-    const projected = wPos.clone().project(cam);
-
-    if (projected.z >= 1) { livePos = null; return; }
-
-    const cx = ( projected.x * 0.5 + 0.5) * W;
-    const cy = (-projected.y * 0.5 + 0.5) * H;
-
-    // サイズ: スライダーで調整可能
-    const rw = W * vrVideoSize;
-    const rh = rw * (9 / 16);
-
-    livePos = { cx, cy, rw, rh };
-  }
-
-  // ---- 1目分の描画 ----
+  /* ================================================
+     1目分の描画
+     ================================================ */
   function drawEye(ctx, W, H) {
     // 背景: 自分の手元（背面カメラ）をフル表示
     if (vrCamVideo.readyState >= 2) {
@@ -881,47 +963,254 @@ async function launchVR(rStream) {
         (W - vw * sc) / 2, (H - vh * sc) / 2,
         vw * sc, vh * sc);
     } else {
-      ctx.fillStyle = "#111";
+      ctx.fillStyle = "#000";
       ctx.fillRect(0, 0, W, H);
     }
 
-    // 相手の映像: マーカー検出中のみ、固定角度でリアルタイム位置に表示
-    if (livePos && remoteVideo.readyState >= 2) {
-      const { cx, cy, rw, rh } = livePos;
+    // 相手の映像: 正面を向いている時だけ画面中央上部に表示
+    if (shouldShowVideo() && remoteVideo.readyState >= 2) {
+      const rw = W * vrVideoSize;
+      const rh = rw * (9 / 16);
+      const cx = W / 2;
+      // 画面の上から35%の位置に中心を置く
+      const cy = H * 0.35;
+
+      // フェードイン・アウト用の透明度計算
+      const diff = Math.abs(currentBeta - lockedBeta);
+      const alpha = Math.max(0, Math.min(1, 1 - (diff - SHOW_RANGE * 0.6) / (SHOW_RANGE * 0.4)));
+
       ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(tiltAngle * Math.PI / 180);
-      ctx.shadowColor = "rgba(0,0,0,0.6)";
-      ctx.shadowBlur = 14;
-      ctx.fillStyle = "rgba(0,0,0,0.2)";
-      ctx.fillRect(-rw/2 - 4, -rh/2 - 4, rw + 8, rh + 8);
+      ctx.globalAlpha = alpha;
+      // 薄い影
+      ctx.shadowColor = "rgba(0,0,0,0.5)";
+      ctx.shadowBlur = 20;
+      ctx.fillStyle = "rgba(0,0,0,0.15)";
+      ctx.fillRect(cx - rw/2 - 4, cy - rh/2 - 4, rw + 8, rh + 8);
       ctx.shadowBlur = 0;
-      ctx.drawImage(remoteVideo, -rw/2, -rh/2, rw, rh);
+      ctx.drawImage(remoteVideo, cx - rw/2, cy - rh/2, rw, rh);
       ctx.restore();
     }
 
-    // ガイドテキスト（未検出時）
-    if (!markerDetected) {
-      ctx.fillStyle = "rgba(255,255,255,0.55)";
-      ctx.font = `${Math.max(12, Math.floor(W * 0.036))}px sans-serif`;
+    // 未固定時のガイド
+    if (lockedBeta === null) {
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.font = `${Math.max(11, Math.floor(W * 0.032))}px sans-serif`;
       ctx.textAlign = "center";
-      ctx.fillText("Hiroマーカーを机に置いて映してください", W / 2, H * 0.92);
+      ctx.fillText("正面を向いて ☰ →「空中に固定」を押してください", W/2, H * 0.88);
       ctx.textAlign = "left";
     }
   }
 
-  // ---- 描画ループ ----
+  /* ================================================
+     描画ループ
+     ================================================ */
   let frameId;
   function loop() {
-    const W = canvasL.width, H = canvasL.height;
-    updateLivePos(W, H); // 左目基準で位置計算（両目共通）
-    drawEye(ctxL, W, H);
+    drawEye(ctxL, canvasL.width, canvasL.height);
     drawEye(ctxR, canvasR.width, canvasR.height);
     frameId = requestAnimationFrame(loop);
   }
   loop();
 
-  window.addEventListener("beforeunload", () => cancelAnimationFrame(frameId));
+  window.addEventListener("beforeunload", () => {
+    cancelAnimationFrame(frameId);
+    window.removeEventListener("deviceorientation", onOrientation);
+  });
+}
+
+
+/* ============================================
+   LAUNCH AERIAL
+   ジャイロスコープによる空中投影モード
+   ============================================ */
+async function launchAerial(rStream) {
+  setupScreen.style.display = "none";
+  vrContainer.style.display = "block";
+  showMenu();
+  hideVRSwitchBtn();
+
+  const vrStatusEl = document.getElementById("vrStatus");
+  const vrCamVideo = document.getElementById("vrCamVideo");
+  const canvasL    = document.getElementById("vrCanvasL");
+  const canvasR    = document.getElementById("vrCanvasR");
+  const ctxL       = canvasL.getContext("2d");
+  const ctxR       = canvasR.getContext("2d");
+
+  remoteVideo.srcObject = rStream;
+  remoteVideo.muted = true;
+  remoteVideo.play().then(() => { remoteVideo.muted = false; }).catch(() => {});
+
+  let camStream;
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { exact: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+  } catch(e) {
+    try { camStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); }
+    catch(e2) { vrStatusEl.textContent = "カメラ取得失敗: " + e2.message; return; }
+  }
+  vrCamVideo.srcObject = camStream;
+  await vrCamVideo.play();
+
+  arScene.style.display = "none";
+  document.getElementById("sizeSliderWrap").style.display = "block";
+  document.getElementById("tiltSliderWrap").style.display = "none";
+
+  /* --- ジャイロ --- */
+  let currentBeta = 0, lockedBeta = null, gyroReady = false;
+  const SHOW_RANGE = 35;
+
+  function onOrientation(e) {
+    const isLandscape = window.innerWidth > window.innerHeight;
+    const val = isLandscape ? (e.gamma ?? e.beta) : (e.beta ?? 0);
+    if (val !== null) { currentBeta = val; gyroReady = true; }
+  }
+
+  async function requestGyro() {
+    if (typeof DeviceOrientationEvent !== "undefined" &&
+        typeof DeviceOrientationEvent.requestPermission === "function") {
+      try {
+        const perm = await DeviceOrientationEvent.requestPermission();
+        if (perm === "granted") { window.addEventListener("deviceorientation", onOrientation, true); return true; }
+        vrStatusEl.textContent = "⚠️ センサー許可が必要です（設定 > Safari > モーションと向きへのアクセス）";
+        return false;
+      } catch(e) { window.addEventListener("deviceorientation", onOrientation, true); return true; }
+    } else {
+      window.addEventListener("deviceorientation", onOrientation, true);
+      await new Promise(r => setTimeout(r, 300));
+      return true;
+    }
+  }
+
+  /* --- 固定ボタン --- */
+  const lockBtn = document.createElement("button");
+  lockBtn.className = "bar-btn";
+  lockBtn.textContent = "📍 空中に固定";
+  lockBtn.style.cssText = "background:rgba(79,142,247,0.15);border:1px solid #4f8ef7;color:#4f8ef7;font-weight:600;";
+  menuItems.insertBefore(lockBtn, menuItems.firstChild);
+
+  const resetBtn = document.createElement("button");
+  resetBtn.className = "bar-btn";
+  resetBtn.textContent = "🔓 固定解除";
+  resetBtn.style.display = "none";
+  menuItems.insertBefore(resetBtn, lockBtn.nextSibling);
+
+  lockBtn.addEventListener("click", async () => {
+    vrStatusEl.style.display = "block";
+    vrStatusEl.textContent = "センサーを起動中...";
+    const ok = await requestGyro();
+    if (!ok) return;
+    await new Promise(r => setTimeout(r, 600));
+    lockedBeta = currentBeta;
+    lockBtn.style.display = "none";
+    resetBtn.style.display = "block";
+    vrStatusEl.textContent = `🔒 固定しました（${lockedBeta.toFixed(1)}°）`;
+    setTimeout(() => { vrStatusEl.style.display = "none"; }, 3000);
+  });
+
+  resetBtn.addEventListener("click", () => {
+    lockedBeta = null; gyroReady = false;
+    resetBtn.style.display = "none"; lockBtn.style.display = "block";
+    vrStatusEl.style.display = "block";
+    vrStatusEl.textContent = "正面を向いて「📍 空中に固定」を押してください";
+    setTimeout(() => { vrStatusEl.style.display = "none"; }, 3000);
+  });
+
+  vrStatusEl.textContent = "☰ メニュー →「📍 空中に固定」を押してください";
+
+  /* --- 表示判定 --- */
+  function shouldShow() {
+    if (!remoteVideo || remoteVideo.readyState < 2) return false;
+    if (lockedBeta === null) return true;
+    if (!gyroReady) return true;
+    return Math.abs(currentBeta - lockedBeta) <= SHOW_RANGE;
+  }
+
+  function getAlpha() {
+    if (lockedBeta === null || !gyroReady) return 1.0;
+    const diff = Math.abs(currentBeta - lockedBeta);
+    return Math.max(0, Math.min(1, 1 - (diff - SHOW_RANGE * 0.6) / (SHOW_RANGE * 0.4)));
+  }
+
+  /* --- リサイズ --- */
+  function resize() {
+    canvasL.width = canvasR.width = Math.floor(window.innerWidth / 2);
+    canvasL.height = canvasR.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  /* --- 描画 --- */
+  function drawEye(ctx, W, H) {
+    if (vrCamVideo.readyState >= 2) {
+      const vw = vrCamVideo.videoWidth || W, vh = vrCamVideo.videoHeight || H;
+      const sc = Math.max(W / vw, H / vh);
+      ctx.drawImage(vrCamVideo, (W - vw*sc)/2, (H - vh*sc)/2, vw*sc, vh*sc);
+    } else {
+      ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
+    }
+
+    const rw = W * vrVideoSize, rh = rw * (9/16);
+    const cx = W / 2, cy = H * 0.35;
+
+    if (shouldShow()) {
+      const alpha = getAlpha();
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.shadowColor = "rgba(0,0,0,0.4)";
+      ctx.shadowBlur = 16;
+
+      if (lockedBeta === null) {
+        const blinkOn = Math.floor(Date.now() / 500) % 2 === 0;
+        ctx.strokeStyle = blinkOn ? "rgba(79,142,247,0.9)" : "rgba(79,142,247,0.3)";
+        ctx.lineWidth = 3;
+        ctx.setLineDash([8, 4]);
+        ctx.strokeRect(cx - rw/2 - 6, cy - rh/2 - 6, rw + 12, rh + 12);
+        ctx.setLineDash([]);
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = blinkOn ? "rgba(79,142,247,0.95)" : "rgba(79,142,247,0.5)";
+        ctx.font = `bold ${Math.max(10, Math.floor(W*0.03))}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.fillText("▼ ここに固定されます", cx, cy - rh/2 - 14);
+        ctx.textAlign = "left";
+      }
+
+      ctx.shadowBlur = 0;
+      ctx.drawImage(remoteVideo, cx - rw/2, cy - rh/2, rw, rh);
+
+      if (lockedBeta !== null && alpha > 0.5) {
+        ctx.fillStyle = "rgba(34,197,94,0.85)";
+        ctx.beginPath();
+        ctx.roundRect(cx - rw/2, cy - rh/2 - 22, 70, 18, 4);
+        ctx.fill();
+        ctx.fillStyle = "white";
+        ctx.font = `bold ${Math.max(9, Math.floor(W*0.025))}px sans-serif`;
+        ctx.fillText("🔒 固定中", cx - rw/2 + 6, cy - rh/2 - 8);
+      }
+      ctx.restore();
+    }
+
+    if (lockedBeta === null) {
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.font = `${Math.max(10, Math.floor(W*0.03))}px sans-serif`;
+      ctx.textAlign = "center";
+      ctx.fillText("☰ →「📍 空中に固定」で位置を確定", W/2, H * 0.92);
+      ctx.textAlign = "left";
+    }
+  }
+
+  let frameId;
+  function loop() {
+    drawEye(ctxL, canvasL.width, canvasL.height);
+    drawEye(ctxR, canvasR.width, canvasR.height);
+    frameId = requestAnimationFrame(loop);
+  }
+  loop();
+  window.addEventListener("beforeunload", () => {
+    cancelAnimationFrame(frameId);
+    window.removeEventListener("deviceorientation", onOrientation);
+  });
 }
 
 
