@@ -356,6 +356,9 @@
     <div id="setupStatus"></div>
   </div>
   <p class="fullscreen-note fullscreen-only-note">iPhoneはSafariの共有ボタンから「ホーム画面に追加」し、追加したアイコンから開くとURLバーなしで表示できます。</p>
+  <p style="max-width:400px;font-size:11px;color:#7090b0;text-align:center;line-height:1.6;margin-top:8px;">
+    🔧 VRモードを使う場合：iOS設定 → Safari → 「モーションと向きへのアクセス」をオンにしてください
+  </p>
 </div>
 
 
@@ -816,49 +819,53 @@ async function launchVR(rStream) {
   /* ================================================
      ジャイロスコープ管理
      ================================================ */
-  let currentBeta  = 0; // 上下の傾き角（-180〜180）
-  let lockedBeta   = null; // 固定時のbeta角
-  let gyroReady    = false;
-  // 映像を表示する角度の許容幅（度）
-  // この範囲内に入ると映像が表示される
-  const SHOW_RANGE = 25;
+  let currentBeta = 0;
+  let lockedBeta  = null;
+  let gyroReady   = false;
+  const SHOW_RANGE = 35;
 
   function onOrientation(e) {
-    // beta: 端末の前後傾き
-    // 横向き（landscape）時はgammaを使う
     const isLandscape = window.innerWidth > window.innerHeight;
-    currentBeta = isLandscape
+    const val = isLandscape
       ? (e.gamma !== null ? e.gamma : e.beta)
       : (e.beta  !== null ? e.beta  : 0);
-    gyroReady = true;
+    if (val !== null) {
+      currentBeta = val;
+      gyroReady = true;
+    }
   }
 
-  // iOS13+はユーザー許可が必要
+  // ジャイロ許可リクエスト（iOS13+対応）
   async function requestGyro() {
     if (typeof DeviceOrientationEvent !== "undefined" &&
         typeof DeviceOrientationEvent.requestPermission === "function") {
+      // iOS: ユーザージェスチャーが必要
       try {
         const perm = await DeviceOrientationEvent.requestPermission();
         if (perm === "granted") {
-          window.addEventListener("deviceorientation", onOrientation);
+          window.addEventListener("deviceorientation", onOrientation, true);
           return true;
         } else {
-          vrStatusEl.textContent = "ジャイロの許可が必要です";
+          vrStatusEl.style.display = "block";
+          vrStatusEl.textContent = "⚠️ センサーの許可が必要です。設定 > Safari > モーションと向きへのアクセスをオンにしてください";
           return false;
         }
       } catch(e) {
-        vrStatusEl.textContent = "ジャイロエラー: " + e.message;
-        return false;
+        // requestPermissionが呼べない場合はそのまま登録を試みる
+        window.addEventListener("deviceorientation", onOrientation, true);
+        return true;
       }
     } else {
-      // Android・非iOS
-      window.addEventListener("deviceorientation", onOrientation);
+      // Android・その他: 許可不要
+      window.addEventListener("deviceorientation", onOrientation, true);
+      // Androidでは即座にイベントが来るか確認
+      await new Promise(r => setTimeout(r, 300));
       return true;
     }
   }
 
   /* ================================================
-     「位置を固定」ボタンをメニューに追加
+     「空中に固定」ボタンをメニューに追加
      ================================================ */
   const lockBtn = document.createElement("button");
   lockBtn.className = "bar-btn";
@@ -876,33 +883,33 @@ async function launchVR(rStream) {
   menuItems.insertBefore(resetBtn, lockBtn.nextSibling);
 
   lockBtn.addEventListener("click", async () => {
-    if (!gyroReady) {
-      const ok = await requestGyro();
-      if (!ok) return;
-      // 少し待ってから角度を取得
-      await new Promise(r => setTimeout(r, 500));
-    }
+    vrStatusEl.style.display = "block";
+    vrStatusEl.textContent = "センサーを起動中...";
+
+    const ok = await requestGyro();
+    if (!ok) return;
+
+    // センサーの値が安定するまで少し待つ
+    await new Promise(r => setTimeout(r, 600));
+
     lockedBeta = currentBeta;
     lockBtn.style.display = "none";
     resetBtn.style.display = "block";
-    vrStatusEl.style.display = "block";
-    vrStatusEl.textContent = "🔒 空中に固定しました — 下を向くと映像が消えます";
+    vrStatusEl.textContent = `🔒 固定しました（角度: ${lockedBeta.toFixed(1)}°）`;
     setTimeout(() => { vrStatusEl.style.display = "none"; }, 3000);
   });
 
   resetBtn.addEventListener("click", () => {
     lockedBeta = null;
+    gyroReady  = false;
     resetBtn.style.display = "none";
     lockBtn.style.display = "block";
     vrStatusEl.style.display = "block";
-    vrStatusEl.textContent = "正面を向いて「空中に固定」を押してください";
+    vrStatusEl.textContent = "正面を向いて「📍 空中に固定」を押してください";
     setTimeout(() => { vrStatusEl.style.display = "none"; }, 3000);
   });
 
-  // ジャイロを先に起動しておく（Androidは許可不要）
-  requestGyro();
-
-  vrStatusEl.textContent = "正面を向いて ☰ → 「📍 空中に固定」を押してください";
+  vrStatusEl.textContent = "☰ メニュー →「📍 空中に固定」を押してください";
 
   /* ================================================
      映像表示判定
